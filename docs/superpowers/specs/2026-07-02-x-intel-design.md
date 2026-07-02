@@ -214,7 +214,9 @@ A small, always-visible indicator (target rail footer or header) showing credits
 
 ### Credential model
 
-**Pay-per-use only.** No Basic/Pro stacking (docs confirm you either run an app on Basic *or* opt it into pay-per-use — not both on one credential set). Single bearer token, stored locally, single cost model. Dialog subtext states "Pay-per-use — credits deducted per request." For v1, all reads go through the X MCP server (`user-xapi`), which uses its own configured auth; the dialog's bearer is stored and ready for the future direct-fetch + posting paths but not yet exercised by reads.
+**Pay-per-use only.** No Basic/Pro stacking (docs confirm you either run an app on Basic *or* opt it into pay-per-use — not both on one credential set). Single bearer token, stored locally, single cost model. Dialog subtext states "Pay-per-use — credits deducted per request."
+
+**Transport:** reads call the X API v2 directly from the browser using the user's stored bearer, through a Vite proxy (`/xapi` → `https://api.x.com`) — the exact pattern OpenVenice already uses for Venice (`/venice` → `https://api.venice.ai` in `vite.config.ts`). This keeps the app fully account-agnostic and self-contained (the X MCP server was a research tool during design, not an app dependency).
 
 ## 6. Profile Synthesis
 
