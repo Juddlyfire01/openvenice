@@ -8,7 +8,7 @@ type Category = 'profile' | 'display'
 
 const CATEGORIES: Array<{ id: Category; label: string; desc: string }> = [
   { id: 'profile', label: 'Profile', desc: 'Your display identity' },
-  { id: 'display', label: 'Display', desc: 'Theme, zoom, and density' },
+  { id: 'display', label: 'Display', desc: 'Theme, scale, and density' },
 ]
 
 export function SettingsView() {

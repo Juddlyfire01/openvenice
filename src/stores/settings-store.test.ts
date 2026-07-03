@@ -6,7 +6,7 @@ describe('settings-store', () => {
     useSettingsStore.setState({
       activeTab: 'chat',
       theme: 'venice',
-      zoom: 100,
+      scale: 100,
       fontScale: 'md',
       reduceMotion: false,
       density: 'comfortable',
@@ -23,11 +23,11 @@ describe('settings-store', () => {
     }
   })
 
-  it('setZoom clamps to the allowed steps', () => {
-    useSettingsStore.getState().setZoom(90)
-    expect(useSettingsStore.getState().zoom).toBe(90)
-    useSettingsStore.getState().setZoom(125)
-    expect(useSettingsStore.getState().zoom).toBe(125)
+  it('setScale accepts the allowed steps', () => {
+    useSettingsStore.getState().setScale(90)
+    expect(useSettingsStore.getState().scale).toBe(90)
+    useSettingsStore.getState().setScale(125)
+    expect(useSettingsStore.getState().scale).toBe(125)
   })
 
   it('setFontScale accepts sm/md/lg', () => {

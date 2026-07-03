@@ -4,7 +4,7 @@ import { createSafeStorage } from '../lib/safe-storage'
 
 export type Tab = 'chat' | 'image' | 'audio' | 'music' | 'video' | 'embeddings' | 'workflows' | 'playground' | 'intel' | 'settings'
 export type Theme = 'dark' | 'venice' | 'grey' | 'light'
-export type Zoom = 90 | 100 | 110 | 125
+export type Scale = 90 | 100 | 110 | 125
 export type FontScale = 'sm' | 'md' | 'lg'
 export type Density = 'compact' | 'comfortable'
 
@@ -21,8 +21,8 @@ interface SettingsState {
 
   theme: Theme
   setTheme: (t: Theme) => void
-  zoom: Zoom
-  setZoom: (z: Zoom) => void
+  scale: Scale
+  setScale: (s: Scale) => void
   fontScale: FontScale
   setFontScale: (f: FontScale) => void
   reduceMotion: boolean
@@ -55,8 +55,8 @@ export const useSettingsStore = create<SettingsState>()(
 
       theme: 'venice',
       setTheme: (t) => set({ theme: t }),
-      zoom: 100,
-      setZoom: (z) => set({ zoom: z }),
+      scale: 100,
+      setScale: (s) => set({ scale: s }),
       fontScale: 'md',
       setFontScale: (f) => set({ fontScale: f }),
       reduceMotion: false,
@@ -77,15 +77,15 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'venice-settings',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => createSafeStorage()),
       migrate: (persisted) => {
-        // v1 -> v2: appearance fields are additive; defaults fill in on read.
-        const s = (persisted ?? {}) as Partial<SettingsState>
+        const s = (persisted ?? {}) as Partial<SettingsState> & { zoom?: Scale }
+        const scale = s.scale ?? s.zoom ?? 100
         return {
           ...s,
+          scale,
           theme: s.theme ?? 'venice',
-          zoom: s.zoom ?? 100,
           fontScale: s.fontScale ?? 'md',
           reduceMotion: s.reduceMotion ?? false,
           density: s.density ?? 'comfortable',

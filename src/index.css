@@ -101,6 +101,12 @@
   color-scheme: light;
 }
 
+html {
+  --ui-scale: 1;
+  --font-scale: 1;
+  --density-space: 1;
+}
+
 body {
   margin: 0;
   background: var(--color-bg-base);
@@ -313,8 +319,61 @@ button:focus, a:focus, textarea:focus, input:focus, select:focus { outline: none
 }
 .prose-venice img { border-radius: 8px; max-width: 100%; }
 
-[data-density="compact"] { --density-pad: 0.75; }
-[data-density="comfortable"] { --density-pad: 1; }
+/* Interface scale — scales the shell uniformly while refitting to the viewport */
+.ui-scale-shell {
+  transform: scale(var(--ui-scale));
+  transform-origin: top left;
+  width: calc(100% / var(--ui-scale));
+  height: calc(100dvh / var(--ui-scale));
+  min-height: calc(100dvh / var(--ui-scale));
+}
+
+/* Font size — scales explicit pixel text utilities inside the shell */
+.ui-scale-shell .prose-venice { font-size: calc(15.5px * var(--font-scale)); }
+.ui-scale-shell .text-\[9px\] { font-size: calc(9px * var(--font-scale)); }
+.ui-scale-shell .text-\[10px\] { font-size: calc(10px * var(--font-scale)); }
+.ui-scale-shell .text-\[10\.5px\] { font-size: calc(10.5px * var(--font-scale)); }
+.ui-scale-shell .text-\[11px\] { font-size: calc(11px * var(--font-scale)); }
+.ui-scale-shell .text-\[11\.5px\] { font-size: calc(11.5px * var(--font-scale)); }
+.ui-scale-shell .text-\[12px\] { font-size: calc(12px * var(--font-scale)); }
+.ui-scale-shell .text-\[12\.5px\] { font-size: calc(12.5px * var(--font-scale)); }
+.ui-scale-shell .text-\[13px\] { font-size: calc(13px * var(--font-scale)); }
+.ui-scale-shell .text-\[13\.5px\] { font-size: calc(13.5px * var(--font-scale)); }
+.ui-scale-shell .text-\[14px\] { font-size: calc(14px * var(--font-scale)); }
+.ui-scale-shell .text-\[15px\] { font-size: calc(15px * var(--font-scale)); }
+.ui-scale-shell .text-\[15\.5px\] { font-size: calc(15.5px * var(--font-scale)); }
+.ui-scale-shell .text-\[16px\] { font-size: calc(16px * var(--font-scale)); }
+.ui-scale-shell .text-\[17px\] { font-size: calc(17px * var(--font-scale)); }
+.ui-scale-shell .text-\[18px\] { font-size: calc(18px * var(--font-scale)); }
+.ui-scale-shell .text-\[20px\] { font-size: calc(20px * var(--font-scale)); }
+.ui-scale-shell .text-\[22px\] { font-size: calc(22px * var(--font-scale)); }
+
+/* Density — tighter/roomier spacing on layout chrome inside the shell */
+.ui-scale-shell .gap-1 { gap: calc(0.25rem * var(--density-space)); }
+.ui-scale-shell .gap-1\.5 { gap: calc(0.375rem * var(--density-space)); }
+.ui-scale-shell .gap-2 { gap: calc(0.5rem * var(--density-space)); }
+.ui-scale-shell .gap-3 { gap: calc(0.75rem * var(--density-space)); }
+.ui-scale-shell .gap-4 { gap: calc(1rem * var(--density-space)); }
+.ui-scale-shell .gap-5 { gap: calc(1.25rem * var(--density-space)); }
+.ui-scale-shell .gap-6 { gap: calc(1.5rem * var(--density-space)); }
+.ui-scale-shell .gap-7 { gap: calc(1.75rem * var(--density-space)); }
+.ui-scale-shell .p-2 { padding: calc(0.5rem * var(--density-space)); }
+.ui-scale-shell .p-3 { padding: calc(0.75rem * var(--density-space)); }
+.ui-scale-shell .px-2 { padding-left: calc(0.5rem * var(--density-space)); padding-right: calc(0.5rem * var(--density-space)); }
+.ui-scale-shell .px-2\.5 { padding-left: calc(0.625rem * var(--density-space)); padding-right: calc(0.625rem * var(--density-space)); }
+.ui-scale-shell .px-3 { padding-left: calc(0.75rem * var(--density-space)); padding-right: calc(0.75rem * var(--density-space)); }
+.ui-scale-shell .px-4 { padding-left: calc(1rem * var(--density-space)); padding-right: calc(1rem * var(--density-space)); }
+.ui-scale-shell .px-5 { padding-left: calc(1.25rem * var(--density-space)); padding-right: calc(1.25rem * var(--density-space)); }
+.ui-scale-shell .px-6 { padding-left: calc(1.5rem * var(--density-space)); padding-right: calc(1.5rem * var(--density-space)); }
+.ui-scale-shell .px-8 { padding-left: calc(2rem * var(--density-space)); padding-right: calc(2rem * var(--density-space)); }
+.ui-scale-shell .py-1 { padding-top: calc(0.25rem * var(--density-space)); padding-bottom: calc(0.25rem * var(--density-space)); }
+.ui-scale-shell .py-2 { padding-top: calc(0.5rem * var(--density-space)); padding-bottom: calc(0.5rem * var(--density-space)); }
+.ui-scale-shell .py-3 { padding-top: calc(0.75rem * var(--density-space)); padding-bottom: calc(0.75rem * var(--density-space)); }
+.ui-scale-shell .py-5 { padding-top: calc(1.25rem * var(--density-space)); padding-bottom: calc(1.25rem * var(--density-space)); }
+.ui-scale-shell .py-8 { padding-top: calc(2rem * var(--density-space)); padding-bottom: calc(2rem * var(--density-space)); }
+.ui-scale-shell .pb-5 { padding-bottom: calc(1.25rem * var(--density-space)); }
+.ui-scale-shell .pt-2 { padding-top: calc(0.5rem * var(--density-space)); }
+.ui-scale-shell .h-14 { height: calc(3.5rem * var(--density-space)); min-height: calc(3.5rem * var(--density-space)); }
 
 [data-reduce-motion="true"] *,
 [data-reduce-motion="true"] *::before,

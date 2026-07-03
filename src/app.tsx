@@ -85,7 +85,8 @@ export function App() {
   useApplyAppearance()
 
   return (
-    <div className="flex h-[100dvh] w-screen overflow-hidden">
+    <>
+      <div className="ui-scale-shell flex h-[100dvh] w-screen overflow-hidden">
       {/* Mobile drawer overlay */}
       {mobileSidebarOpen && (
         <button
@@ -107,9 +108,10 @@ export function App() {
           </ErrorBoundary>
         </main>
       </div>
+      </div>
       <ApiKeyDialog open={apiKeyOpen} onClose={() => setApiKeyOpen(false)} />
       <XCredentialsDialog open={xKeyOpen} onClose={() => setXKeyOpen(false)} />
       <Toaster />
-    </div>
+    </>
   )
 }

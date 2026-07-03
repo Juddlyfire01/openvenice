@@ -1,14 +1,10 @@
 import { cn } from '../../lib/utils'
-import { useSettingsStore, type Zoom, type FontScale, type Density } from '../../stores/settings-store'
+import { useSettingsStore, type Scale, type FontScale, type Density } from '../../stores/settings-store'
+import { SCALE_STEPS } from '../../lib/appearance'
 import { Label, PillGroup } from '../ui/shared'
 import { ThemeSwatches } from './theme-swatches'
 
-const ZOOM_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '90', label: '90%' },
-  { value: '100', label: '100%' },
-  { value: '110', label: '110%' },
-  { value: '125', label: '125%' },
-]
+const SCALE_OPTIONS = SCALE_STEPS.map((v) => ({ value: String(v), label: `${v}%` }))
 
 const FONT_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'sm', label: 'Small' },
@@ -38,8 +34,8 @@ function cnKnob(on: boolean) {
 }
 
 export function DisplaySection() {
-  const zoom = useSettingsStore((s) => s.zoom)
-  const setZoom = useSettingsStore((s) => s.setZoom)
+  const scale = useSettingsStore((s) => s.scale)
+  const setScale = useSettingsStore((s) => s.setScale)
   const fontScale = useSettingsStore((s) => s.fontScale)
   const setFontScale = useSettingsStore((s) => s.setFontScale)
   const reduceMotion = useSettingsStore((s) => s.reduceMotion)
@@ -55,17 +51,23 @@ export function DisplaySection() {
       </div>
 
       <div>
-        <Label>Zoom</Label>
+        <Label>Interface scale</Label>
+        <p className="text-[11px] text-[var(--color-text-tertiary)] -mt-1 mb-2">
+          Scales the whole UI while keeping the layout fitted to the window.
+        </p>
         <PillGroup
-          ariaLabel="Zoom level"
-          options={ZOOM_OPTIONS}
-          value={String(zoom)}
-          onChange={(v) => setZoom(Number(v) as Zoom)}
+          ariaLabel="Interface scale"
+          options={SCALE_OPTIONS}
+          value={String(scale)}
+          onChange={(v) => setScale(Number(v) as Scale)}
         />
       </div>
 
       <div>
         <Label>Font size</Label>
+        <p className="text-[11px] text-[var(--color-text-tertiary)] -mt-1 mb-2">
+          Adjusts text size on top of interface scale.
+        </p>
         <PillGroup
           ariaLabel="Font size"
           options={FONT_OPTIONS}
@@ -76,6 +78,9 @@ export function DisplaySection() {
 
       <div>
         <Label>Density</Label>
+        <p className="text-[11px] text-[var(--color-text-tertiary)] -mt-1 mb-2">
+          Tighter or roomier spacing in navigation and panels.
+        </p>
         <PillGroup
           ariaLabel="Density"
           options={DENSITY_OPTIONS}

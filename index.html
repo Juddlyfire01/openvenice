@@ -14,11 +14,15 @@
           var html = document.documentElement
           if (s.theme) html.dataset.theme = s.theme
           html.style.colorScheme = s.theme === 'light' ? 'light' : 'dark'
-          if (s.zoom) html.style.zoom = s.zoom + '%'
+          var scale = s.scale != null ? s.scale : (s.zoom != null ? s.zoom : 100)
+          html.style.setProperty('--ui-scale', String(scale / 100))
+          html.style.removeProperty('zoom')
           var fontScale = { sm: 0.9, md: 1, lg: 1.12 }
           if (s.fontScale && fontScale[s.fontScale]) {
             html.style.setProperty('--font-scale', String(fontScale[s.fontScale]))
           }
+          var densitySpace = s.density === 'compact' ? 0.82 : 1
+          html.style.setProperty('--density-space', String(densitySpace))
           if (s.reduceMotion) html.dataset.reduceMotion = String(s.reduceMotion)
           if (s.density) html.dataset.density = s.density
           if (s.theme === 'light') {

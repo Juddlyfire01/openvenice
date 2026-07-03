@@ -1,33 +1,23 @@
 import { useEffect } from 'react'
 import { useSettingsStore } from '../stores/settings-store'
-
-const FONT_SCALE_MAP = { sm: 0.9, md: 1, lg: 1.12 } as const
+import { applyAppearanceToHtml } from '../lib/appearance'
 
 export function useApplyAppearance() {
   const theme = useSettingsStore((s) => s.theme)
-  const zoom = useSettingsStore((s) => s.zoom)
+  const scale = useSettingsStore((s) => s.scale)
   const fontScale = useSettingsStore((s) => s.fontScale)
   const reduceMotion = useSettingsStore((s) => s.reduceMotion)
   const density = useSettingsStore((s) => s.density)
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark'
-  }, [theme])
-
-  useEffect(() => {
-    document.documentElement.style.zoom = `${zoom}%`
-  }, [zoom])
-
-  useEffect(() => {
-    document.documentElement.style.setProperty('--font-scale', String(FONT_SCALE_MAP[fontScale]))
-  }, [fontScale])
-
-  useEffect(() => {
-    document.documentElement.dataset.reduceMotion = String(reduceMotion)
-  }, [reduceMotion])
-
-  useEffect(() => {
+    applyAppearanceToHtml(document.documentElement, {
+      theme,
+      scale,
+      fontScale,
+      density,
+      reduceMotion,
+    })
     document.documentElement.dataset.density = density
-  }, [density])
+    document.documentElement.dataset.reduceMotion = String(reduceMotion)
+  }, [theme, scale, fontScale, reduceMotion, density])
 }
