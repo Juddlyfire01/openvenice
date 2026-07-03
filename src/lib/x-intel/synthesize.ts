@@ -17,12 +17,32 @@ Respond with ONLY a fenced json block matching exactly this shape:
 
 export function parseSynthesis(content: string, model: string): CharacterProfile {
   const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const jsonText = fenced ? fenced[1] : content
+  const candidates = [fenced?.[1], content].filter((c): c is string => Boolean(c))
 
-  let raw: Record<string, unknown>
-  try {
-    raw = JSON.parse(jsonText.trim())
-  } catch {
+  let raw: Record<string, unknown> | null = null
+  for (const candidate of candidates) {
+    try {
+      raw = JSON.parse(candidate.trim())
+      break
+    } catch {
+      // try next candidate
+    }
+  }
+  // Last resort: scan for a complete JSON object embedded in noisy text.
+  // Handles broken fences / interleaved prose where the model's valid JSON
+  // appears as a substring rather than as the whole or fenced content.
+  if (!raw) {
+    for (let i = 0; i < content.length; i++) {
+      if (content[i] !== '{') continue
+      try {
+        raw = JSON.parse(content.slice(i))
+        break
+      } catch {
+        // try next '{'
+      }
+    }
+  }
+  if (!raw) {
     throw new Error('Could not parse synthesis response — model did not return valid JSON')
   }
 
@@ -72,6 +92,9 @@ export async function synthesizeProfile(
     }),
   })
 
-  const content = resp.choices[0].message.content
-  return parseSynthesis(typeof content === 'string' ? content : '', settings.model)
+  const choice = resp.choices?.[0]
+  if (!choice?.message?.content) {
+    throw new Error('Venice synthesis returned no content — the model may have refused or filtered the request')
+  }
+  return parseSynthesis(choice.message.content, settings.model)
 }

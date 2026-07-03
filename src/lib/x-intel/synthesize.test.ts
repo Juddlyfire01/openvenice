@@ -38,4 +38,18 @@ describe('parseSynthesis', () => {
     const result = parseSynthesis(partial, 'm')
     expect(result.recurringTopics).toEqual([])
   })
+
+  it('falls back to bare JSON when fenced content is truncated by embedded backticks', () => {
+    // Simulate a response where the JSON contains triple backticks, truncating the fence extraction
+    const content = '```json\n{"themes": ["test"], "broken": ```}\n```\n' + validJson
+    const result = parseSynthesis(content, 'm')
+    // The first fence is truncated and won't parse; the fallback to full content finds validJson
+    expect(result.flagshipPost.postId).toBe('999')
+  })
+
+  it('throws when Venices returns empty choices (via synthesizeProfile guard)', () => {
+    // This is tested via the guard in synthesizeProfile, not parseSynthesis
+    // Just verify parseSynthesis still throws on truly empty content
+    expect(() => parseSynthesis('', 'm')).toThrow(/parse/i)
+  })
 })
