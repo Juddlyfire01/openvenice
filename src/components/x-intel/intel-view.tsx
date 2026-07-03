@@ -1,0 +1,46 @@
+import { useXIntelStore, type IntelSubTab } from '../../stores/x-intel-store'
+import { cn } from '../../lib/utils'
+
+const SUB_TABS: { id: IntelSubTab; label: string }[] = [
+  { id: 'profile', label: 'Profile' },
+  { id: 'network', label: 'Network' },
+  { id: 'feed', label: 'Feed' },
+  { id: 'draft', label: 'Draft' },
+]
+
+export function IntelView() {
+  const activeSubTab = useXIntelStore((s) => s.activeSubTab)
+  const setActiveSubTab = useXIntelStore((s) => s.setActiveSubTab)
+  const activeTarget = useXIntelStore((s) => s.activeTarget)
+
+  return (
+    <div className="flex h-full">
+      {/* Target rail placeholder — replaced in Task 9 */}
+      <div className="w-52 shrink-0 border-r border-white/[0.06] bg-[#0a0a0a] flex items-center justify-center">
+        <span className="text-[11px] text-white/15 px-4 text-center">Add a target to start gathering intel</span>
+      </div>
+
+      <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex items-center gap-1 px-4 py-1.5 border-b border-white/[0.04]">
+          {SUB_TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setActiveSubTab(id)}
+              className={cn(
+                'text-[11px] font-medium px-2.5 py-[3px] rounded-full transition-all duration-150',
+                activeSubTab === id ? 'bg-white text-black' : 'bg-white/[0.03] text-white/20 hover:text-white/40 hover:bg-white/[0.05]',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1 min-h-0 flex items-center justify-center">
+          <span className="text-[12px] text-white/15">
+            {activeTarget ? `${activeSubTab} — coming in later tasks` : 'No target selected'}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}

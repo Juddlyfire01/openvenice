@@ -30,6 +30,9 @@ function WorkflowIcon() {
 function PlaygroundIcon() {
   return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5M2 12l10 5 10-5" /></svg>)
 }
+function IntelIcon() {
+  return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><circle cx="11" cy="11" r="2.5" /></svg>)
+}
 
 interface NavGroup {
   label: string
@@ -56,6 +59,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'workflows', label: 'Workflows', Icon: WorkflowIcon },
       { id: 'playground', label: 'Playground', Icon: PlaygroundIcon },
+      { id: 'intel', label: 'Intel', Icon: IntelIcon },
     ],
   },
 ]
@@ -217,7 +221,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
         <div className="px-3 py-2.5 border-t border-white/[0.04]">
           <div className="text-[11px] text-white/35 space-y-0.5">
             <div className="flex justify-between"><span>New chat</span><kbd className="font-mono text-white/50">⌘N</kbd></div>
-            <div className="flex justify-between"><span>Switch tab</span><kbd className="font-mono text-white/50">⌘1-8</kbd></div>
+            <div className="flex justify-between"><span>Switch tab</span><kbd className="font-mono text-white/50">⌘1-9</kbd></div>
           </div>
         </div>
       )}

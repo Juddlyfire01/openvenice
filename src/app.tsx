@@ -24,6 +24,11 @@ function PlaygroundView() {
   return <Suspense fallback={<div className="flex items-center justify-center h-full text-[12px] text-white/30">Loading playground…</div>}><LazyPlaygroundView /></Suspense>
 }
 
+const LazyIntelView = lazy(() => import('./components/x-intel/intel-view').then((m) => ({ default: m.IntelView })))
+function IntelView() {
+  return <Suspense fallback={<div className="flex items-center justify-center h-full text-[12px] text-white/15">Loading intel...</div>}><LazyIntelView /></Suspense>
+}
+
 const views = {
   chat: ChatView,
   image: ImagePage,
@@ -33,9 +38,10 @@ const views = {
   embeddings: EmbeddingsView,
   workflows: WorkflowsView,
   playground: PlaygroundView,
+  intel: IntelView,
 } as const
 
-const TAB_ORDER: Tab[] = ['chat', 'image', 'audio', 'music', 'video', 'embeddings', 'workflows', 'playground']
+const TAB_ORDER: Tab[] = ['chat', 'image', 'audio', 'music', 'video', 'embeddings', 'workflows', 'playground', 'intel']
 
 export function App() {
   const needsUnlock = useAuthStore((s) => s.hasEncrypted && !s.apiKey)
