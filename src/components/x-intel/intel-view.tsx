@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useXIntelStore, type IntelSubTab } from '../../stores/x-intel-store'
 import { TargetRail } from './target-rail'
 import { ActivityFeed } from './activity-feed'
+import { ProfileCard } from './profile-card'
 import { runGather } from '../../lib/x-intel/orchestrate'
 import { cn } from '../../lib/utils'
 
@@ -47,7 +48,9 @@ export function IntelView() {
           ))}
         </div>
         <div className="flex-1 min-h-0">
-          {activeSubTab === 'feed' ? (
+          {activeSubTab === 'profile' ? (
+            <ProfileCard />
+          ) : activeSubTab === 'feed' ? (
             <ActivityFeed />
           ) : (
             <div className="flex items-center justify-center h-full">
