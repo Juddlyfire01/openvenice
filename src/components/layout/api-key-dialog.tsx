@@ -8,7 +8,9 @@ const MIN_PASSPHRASE = 8
 
 export function ApiKeyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { apiKey, hasEncrypted, setApiKey, unlock, clearApiKey } = useAuthStore()
-  const [value, setValue] = useState('')
+  // Prefill with the live key so a connected key shows as obscured/filled dots
+  // (via the password input) instead of an empty field — e.g. after a site-data reset.
+  const [value, setValue] = useState(apiKey ?? '')
   const [passphrase, setPassphrase] = useState('')
   const [remember, setRemember] = useState(false)
   const [busy, setBusy] = useState(false)
