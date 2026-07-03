@@ -87,4 +87,20 @@ describe('deriveEdges', () => {
   it('returns empty array for no posts', () => {
     expect(deriveEdges('42', [])).toEqual([])
   })
+
+  it('updates lastSeen when a newer post is processed after an older one', () => {
+    const older = normalizePost({ ...rawPost, id: '997', created_at: '2026-06-29T12:00:00.000Z' })
+    const newer = normalizePost({ ...rawPost, id: '998', created_at: '2026-07-02T12:00:00.000Z' })
+    const edges = deriveEdges('42', [older, newer]) // oldest first → update branch fires
+    const mention = edges.find((e) => e.kind === 'mention' && e.targetUsername === 'venice_ai')
+    expect(mention!.lastSeen).toBe('2026-07-02T12:00:00.000Z')
+  })
+
+  it('upgrades a placeholder mention target to a real id when one arrives later', () => {
+    const noId = normalizePost({ ...rawPost, id: 'a', entities: { mentions: [{ username: 'venice_ai' }] } })
+    const withId = normalizePost({ ...rawPost, id: 'b', entities: { mentions: [{ username: 'venice_ai', id: '77' }] } })
+    const edges = deriveEdges('42', [noId, withId]) // placeholder first, then real id
+    const mention = edges.find((e) => e.kind === 'mention' && e.targetUsername === 'venice_ai')
+    expect(mention!.target).toBe('77') // upgraded from user:venice_ai
+  })
 })

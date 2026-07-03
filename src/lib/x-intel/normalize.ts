@@ -71,6 +71,11 @@ export function deriveEdges(sourceUserId: string, posts: Post[]): Edge[] {
     if (existing) {
       existing.weight += 1
       if (edge.lastSeen > existing.lastSeen) existing.lastSeen = edge.lastSeen
+      // Upgrade placeholder target (user:... / post:...) to a real id when one arrives
+      const isPlaceholder = (t: string) => t.startsWith('user:') || t.startsWith('post:')
+      if (isPlaceholder(existing.target) && !isPlaceholder(edge.target)) {
+        existing.target = edge.target
+      }
     } else {
       map.set(key, { ...edge, weight: 1 })
     }
