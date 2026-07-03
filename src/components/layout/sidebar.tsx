@@ -4,6 +4,8 @@ import { useSettingsStore, type Tab } from '../../stores/settings-store'
 import { useChatStore } from '../../stores/chat-store'
 import { toast } from '../../stores/toast-store'
 import { VeniceLogo, VeniceWordmark } from '../ui/logo'
+import { PanelToggleButton } from './panel-toggle'
+import { RAIL_FOOTER_CLASS, RAIL_FOOTER_ROW_CLASS } from './rail-footer'
 import type { Conversation } from '../../types/venice'
 
 function ChatIcon() {
@@ -82,6 +84,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
   const activeTab = useSettingsStore((s) => s.activeTab)
   const setActiveTab = useSettingsStore((s) => s.setActiveTab)
   const sidebarOpen = useSettingsStore((s) => s.sidebarOpen)
+  const toggleSidebar = useSettingsStore((s) => s.toggleSidebar)
   const conversations = useChatStore((s) => s.conversations)
   const activeConversationId = useChatStore((s) => s.activeConversationId)
   const setActiveConversation = useChatStore((s) => s.setActiveConversation)
@@ -89,6 +92,8 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
   const deleteConversation = useChatStore((s) => s.deleteConversation)
   const selectedModel = useSettingsStore((s) => s.selectedModels.chat)
   const [search, setSearch] = useState('')
+
+  const expanded = sidebarOpen || mobileOpen
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -117,34 +122,62 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
-  const expanded = sidebarOpen || mobileOpen
-
   return (
     <aside
       aria-label="Primary navigation"
       className={cn(
         'flex flex-col h-full bg-[var(--color-bg-input)] border-r border-[var(--color-border-faint)] transition-all duration-200 ease-out',
-        'fixed top-0 left-0 z-40 w-72 h-[100dvh] md:static md:h-full md:w-auto',
+        'fixed top-0 left-0 z-40 w-64 h-[100dvh] md:static md:h-full md:shrink-0 overflow-x-hidden',
         mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-        sidebarOpen ? 'md:w-64' : 'md:w-[60px]',
+        sidebarOpen ? 'md:w-52' : 'md:w-[60px]',
       )}
     >
-      <div className={cn('flex items-center gap-2.5 h-14 shrink-0 border-b border-white/[0.04]', expanded ? 'px-4' : 'md:px-3 md:justify-center px-4')}>
-        <VeniceLogo size={20} />
-        {expanded && <VeniceWordmark className="text-[15px] tracking-tight" />}
-        <button
-          onClick={onMobileClose}
-          aria-label="Close menu"
-          className="md:hidden ml-auto p-1 text-white/45 hover:text-white/80 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-        </button>
+      <div className={cn(
+        'flex items-center h-14 shrink-0 border-b border-white/[0.04]',
+        expanded ? 'px-2 gap-1' : 'md:px-1.5 md:justify-center px-2',
+      )}>
+        {expanded ? (
+          <>
+            <VeniceLogo size={20} className="shrink-0" />
+            <VeniceWordmark className="text-[15px] tracking-tight truncate flex-1 min-w-0" />
+            <PanelToggleButton
+              expanded={sidebarOpen}
+              onClick={toggleSidebar}
+              label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+              className="hidden md:flex shrink-0"
+            />
+            <button
+              onClick={onMobileClose}
+              aria-label="Close menu"
+              className="md:hidden shrink-0 p-1 text-white/45 hover:text-white/80 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+          </>
+        ) : (
+          <>
+            <PanelToggleButton
+              expanded={false}
+              onClick={toggleSidebar}
+              label="Expand sidebar"
+              className="hidden md:flex mx-auto shrink-0"
+            />
+            <VeniceLogo size={20} className="shrink-0 md:hidden" />
+            <button
+              onClick={onMobileClose}
+              aria-label="Close menu"
+              className="md:hidden ml-auto shrink-0 p-1 text-white/45 hover:text-white/80 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+          </>
+        )}
       </div>
 
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <nav aria-label="Sections" className="flex flex-col gap-3 py-3 overflow-y-auto shrink-0">
           {navGroups.map((group) => (
-            <div key={group.label} className={cn(expanded ? 'px-2' : 'md:px-1.5 px-2')}>
+            <div key={group.label} className={cn(expanded ? 'px-1.5' : 'md:px-1.5 px-1.5')}>
               {expanded && (
                 <div className="px-2 pb-1.5 text-[10.5px] uppercase tracking-[0.1em] text-white/30 font-semibold">
                   {group.label}
@@ -181,8 +214,8 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
         </nav>
 
         {expanded && activeTab === 'chat' && (
-          <div className="flex flex-col flex-1 min-h-0 mt-1 border-t border-white/[0.04]">
-            <div className="flex items-center justify-between px-3 pt-3 pb-1.5">
+          <div className="flex flex-col flex-1 min-h-0 min-w-0 mt-1 border-t border-white/[0.04]">
+            <div className="flex items-center justify-between px-2 pt-3 pb-1.5">
               <span className="text-[10.5px] font-semibold text-white/40 uppercase tracking-[0.1em]">History</span>
               <button
                 onClick={() => createConversation(selectedModel || 'qwen3-next-80b')}
@@ -194,7 +227,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
               </button>
             </div>
             {conversations.length > 5 && (
-              <div className="px-3 pb-2">
+              <div className="px-2 pb-2">
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -204,7 +237,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
                 />
               </div>
             )}
-            <div className="flex-1 overflow-y-auto px-2 pb-3" role="list">
+            <div className="flex-1 min-w-0 overflow-y-auto px-2 pb-3" role="list">
               {filtered.length === 0 ? (
                 <div className="px-2 py-6 text-[13px] text-white/30 text-center">
                   {search ? 'No matches' : 'No conversations yet'}
@@ -226,15 +259,16 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
         )}
       </div>
 
-      <div className="shrink-0 border-t border-[var(--color-border-faint)] px-3 py-2.5">
+      <div className={RAIL_FOOTER_CLASS}>
         <button
           type="button"
           onClick={() => { useSettingsStore.getState().openSettings(); onMobileClose?.() }}
           aria-label="Open settings"
           title="Settings"
           className={cn(
-            'flex items-center rounded-lg text-[14px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-white/[0.03] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2',
-            expanded ? 'gap-2.5 w-full px-2.5 py-2' : 'md:justify-center w-full py-2',
+            RAIL_FOOTER_ROW_CLASS,
+            'flex-row items-center rounded-lg text-[14px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-white/[0.03] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2',
+            expanded ? 'gap-2.5 w-full' : 'md:justify-center w-full',
           )}
         >
           <SettingsIcon />
@@ -258,14 +292,14 @@ function ConversationRow({ conv, isActive, onSelect, onDelete, onExport }: {
     <div
       role="listitem"
       className={cn(
-        'group relative flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[13px] cursor-pointer transition-colors',
+        'group relative flex items-center gap-1 min-w-0 px-2.5 py-1.5 rounded-md text-[13px] cursor-pointer transition-colors',
         isActive
           ? 'bg-white/[0.07] text-white'
           : 'text-white/65 hover:text-white hover:bg-white/[0.03]',
       )}
       onClick={onSelect}
     >
-      <span className="truncate flex-1">{conv.title || 'Untitled'}</span>
+      <span className="truncate flex-1 min-w-0">{conv.title || 'Untitled'}</span>
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
         <button
           onClick={(e) => { e.stopPropagation(); onExport() }}

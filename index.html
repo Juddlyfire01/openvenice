@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="venice">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -7,11 +7,13 @@
     <script>
       (function () {
         try {
+          var html = document.documentElement
+          html.dataset.theme = 'venice'
+          html.style.colorScheme = 'dark'
           var raw = localStorage.getItem('venice-settings')
           if (!raw) return
           var data = JSON.parse(raw)
           var s = data.state || data
-          var html = document.documentElement
           if (s.theme) html.dataset.theme = s.theme
           html.style.colorScheme = s.theme === 'light' ? 'light' : 'dark'
           var scale = s.scale != null ? s.scale : (s.zoom != null ? s.zoom : 100)

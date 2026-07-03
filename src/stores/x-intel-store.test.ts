@@ -20,7 +20,7 @@ describe('mergePosts', () => {
 
 describe('useXIntelStore', () => {
   beforeEach(() => {
-    useXIntelStore.setState({ targets: [], reports: {}, activeTarget: null, sessionCost: 0 })
+    useXIntelStore.setState({ targets: [], reports: {}, activeTarget: null, sessionCost: 0, lifetimeTotal: 0 })
   })
 
   it('addTarget creates an empty report and selects it', () => {
@@ -47,13 +47,21 @@ describe('useXIntelStore', () => {
     expect(s.activeTarget).toBeNull()
   })
 
-  it('addCost accumulates session and per-target cost', () => {
+  it('addCost accumulates visit, lifetime, and per-target cost', () => {
     useXIntelStore.getState().addTarget('ErikVoorhees')
     useXIntelStore.getState().addCost('ErikVoorhees', 0.26)
     useXIntelStore.getState().addCost('ErikVoorhees', 0.01)
     const s = useXIntelStore.getState()
     expect(s.sessionCost).toBeCloseTo(0.27)
+    expect(s.lifetimeTotal).toBeCloseTo(0.27)
     expect(s.reports['ErikVoorhees'].totalCost).toBeCloseTo(0.27)
+  })
+
+  it('removeTarget does not decrease lifetimeTotal', () => {
+    useXIntelStore.getState().addTarget('ErikVoorhees')
+    useXIntelStore.getState().addCost('ErikVoorhees', 0.45)
+    useXIntelStore.getState().removeTarget('ErikVoorhees')
+    expect(useXIntelStore.getState().lifetimeTotal).toBeCloseTo(0.45)
   })
 
   it('removeTarget is case-insensitive (matches addTarget canonicalization)', () => {

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { createSafeStorage } from '../lib/safe-storage'
+import { DEFAULT_THEME } from '../lib/theme-palettes'
 
 export type Tab = 'chat' | 'image' | 'audio' | 'music' | 'video' | 'embeddings' | 'workflows' | 'playground' | 'intel' | 'settings'
 export type Theme = 'dark' | 'venice' | 'grey' | 'light'
@@ -53,7 +54,7 @@ export const useSettingsStore = create<SettingsState>()(
       playgroundAgentModel: '',
       setPlaygroundAgentModel: (modelId) => set({ playgroundAgentModel: modelId }),
 
-      theme: 'venice',
+      theme: DEFAULT_THEME,
       setTheme: (t) => set({ theme: t }),
       scale: 100,
       setScale: (s) => set({ scale: s }),
@@ -85,7 +86,7 @@ export const useSettingsStore = create<SettingsState>()(
         return {
           ...s,
           scale,
-          theme: s.theme ?? 'venice',
+          theme: s.theme ?? DEFAULT_THEME,
           fontScale: s.fontScale ?? 'md',
           reduceMotion: s.reduceMotion ?? false,
           density: s.density ?? 'comfortable',

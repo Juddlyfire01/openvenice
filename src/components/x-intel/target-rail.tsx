@@ -81,7 +81,20 @@ export function TargetRail() {
                   <div className="w-4 h-4 rounded-full bg-white/[0.06] shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="truncate">@{t}</div>
+                  <div className="flex items-baseline justify-between gap-1 min-w-0">
+                    <span className="truncate">@{t}</span>
+                    {(report?.totalCost ?? 0) > 0 && (
+                      <span
+                        title={`All-time API spend for @${t}`}
+                        className={cn(
+                          'shrink-0 font-mono tabular-nums text-[9px]',
+                          t === activeTarget ? 'text-white/35' : 'text-white/20',
+                        )}
+                      >
+                        ${report!.totalCost.toFixed(3)}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-[9px] text-white/12">
                     {busy === t ? 'gathering…' : relativeTime(report?.profile?.gatheredAt)}
                   </div>

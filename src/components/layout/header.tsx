@@ -49,7 +49,7 @@ interface Props {
 }
 
 export function Header({ onOpenApiKey, onOpenXKey, onOpenMobileSidebar }: Props) {
-  const { activeTab, selectedModels, setSelectedModel, toggleSidebar } = useSettingsStore()
+  const { activeTab, selectedModels, setSelectedModel } = useSettingsStore()
   const apiKey = useAuthStore((s) => s.apiKey)
   const xBearer = useXAuthStore((s) => s.bearerToken)
   const hasOwnSelector = noModelSelector.has(activeTab)
@@ -67,16 +67,6 @@ export function Header({ onOpenApiKey, onOpenXKey, onOpenMobileSidebar }: Props)
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
           <line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" />
-        </svg>
-      </button>
-
-      <button
-        onClick={toggleSidebar}
-        aria-label="Toggle sidebar"
-        className="hidden md:block text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors p-1.5 -ml-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
-          <path d="M3 4h18M3 12h12M3 20h18" />
         </svg>
       </button>
 

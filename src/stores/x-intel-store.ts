@@ -34,6 +34,8 @@ interface XIntelState {
   activeTarget: string | null
   activeSubTab: IntelSubTab
   sessionCost: number
+  /** Persisted all-time spend across all targets (survives target removal). */
+  lifetimeTotal: number
   defaultSynthesisSettings: SynthesisSettings
 
   addTarget: (username: string) => void
@@ -70,6 +72,7 @@ export const useXIntelStore = create<XIntelState>()(
       activeTarget: null,
       activeSubTab: 'profile',
       sessionCost: 0,
+      lifetimeTotal: 0,
       defaultSynthesisSettings: DEFAULT_SYNTHESIS_SETTINGS,
 
       addTarget: (username) => {
@@ -180,6 +183,7 @@ export const useXIntelStore = create<XIntelState>()(
           const report = s.reports[key]
           return {
             sessionCost: s.sessionCost + cost,
+            lifetimeTotal: s.lifetimeTotal + cost,
             reports: { ...s.reports, [key]: { ...report, totalCost: report.totalCost + cost } },
           }
         })
@@ -189,10 +193,22 @@ export const useXIntelStore = create<XIntelState>()(
     }),
     {
       name: 'x-intel-reports',
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<XIntelState>
+        if (version < 1 && state.reports && state.lifetimeTotal == null) {
+          state.lifetimeTotal = Object.values(state.reports).reduce(
+            (sum, r) => sum + (r.totalCost ?? 0),
+            0,
+          )
+        }
+        return state as XIntelState
+      },
       partialize: (s) => ({
         targets: s.targets,
         reports: s.reports,
         activeTarget: s.activeTarget,
+        lifetimeTotal: s.lifetimeTotal,
         defaultSynthesisSettings: s.defaultSynthesisSettings,
       }),
     },
