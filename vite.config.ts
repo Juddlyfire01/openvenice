@@ -11,6 +11,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/venice/, ''),
       },
+      '/xapi': {
+        target: 'https://api.x.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/xapi/, ''),
+      },
     },
   },
 })
