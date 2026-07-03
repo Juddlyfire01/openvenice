@@ -18,14 +18,20 @@ export async function runGather(username: string, opts: { backfill?: number } = 
   updateReport(username, { profile })
 
   // 2. Posts — incremental via since_id when we have prior posts
-  const sinceId = report.posts.length > 0 ? report.profile?.mostRecentPostId ?? undefined : undefined
+  // Re-read the current state to avoid a stale snapshot
+  const currentReport = useXIntelStore.getState().reports[username]
+  const sinceId = currentReport && currentReport.posts.length > 0
+    ? currentReport.profile?.mostRecentPostId ?? undefined
+    : undefined
   const postsResult = await gatherPosts(profile.id, {
     sinceId,
     maxResults: opts.backfill ?? 50,
   })
   addCost(username, postsResult.cost)
 
-  const merged = mergePosts(report.posts, postsResult.data)
+  // Re-read posts right before merging to avoid stale snapshot from concurrent gathers
+  const existingPosts = useXIntelStore.getState().reports[username]?.posts ?? []
+  const merged = mergePosts(existingPosts, postsResult.data)
 
   // 3. Edges — recomputed locally from the full merged post set, free
   const edges = deriveEdges(profile.id, merged)
