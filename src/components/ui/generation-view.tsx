@@ -20,7 +20,7 @@ interface Props {
 export function GenerationView({ controls, output, history, className }: Props) {
   return (
     <div className={cn('flex flex-col md:flex-row h-full bg-[var(--color-bg-base)]', className)}>
-      <aside className="md:w-[360px] lg:w-[400px] shrink-0 border-r border-[var(--color-border-faint)] flex flex-col bg-[var(--color-bg-input)] max-h-[55vh] md:max-h-none">
+      <aside className="md:w-[360px] lg:w-[400px] shrink-0 border-r border-[var(--color-border-faint)] flex flex-col bg-[var(--color-bg-base)] max-h-[55vh] md:max-h-none">
         <div className="p-5 flex flex-col gap-4 overflow-y-auto">
           {controls}
         </div>

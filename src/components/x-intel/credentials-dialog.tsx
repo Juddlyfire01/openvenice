@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useXAuthStore } from '../../stores/x-intel-auth-store'
 import { useXIntelStore } from '../../stores/x-intel-store'
 import { validateXKey } from '../../lib/x-intel/validate-x-key'
+import { Modal, modalInputClass, modalGhostBtnClass, modalPrimaryBtnClass } from '../ui/modal'
 
 export function XCredentialsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { bearerToken, setBearerToken, clearBearerToken } = useXAuthStore()
@@ -24,8 +25,6 @@ export function XCredentialsDialog({ open, onClose }: { open: boolean; onClose: 
         return
       }
       setBearerToken(token)
-      // The validation lookup already fetched the default target's profile —
-      // seed it as a starting target (no-op refresh if it already exists).
       if (validation.profile) seedTarget(validation.profile)
       onClose()
     } catch (e) {
@@ -36,63 +35,66 @@ export function XCredentialsDialog({ open, onClose }: { open: boolean; onClose: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div
-        className="relative bg-[var(--color-bg-overlay)] border border-[var(--color-border-soft)] rounded-xl p-6 w-full max-w-sm mx-4 animate-scale-in"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-6">
-          <h2 className="text-[14px] font-semibold text-white/90">Connect to X</h2>
-          <p className="text-[11px] text-white/25 mt-0.5">
-            Pay-per-use — credits deducted per request. Stored locally, never sent to third parties.
-          </p>
-        </div>
-
-        <input
-          type="password"
-          value={value}
-          onChange={(e) => { setValue(e.target.value); if (error) setError(null) }}
-          placeholder="Bearer token (AAAA...)"
-          className="w-full bg-[var(--color-bg-input)] border border-[var(--color-border-soft)] rounded-lg px-3.5 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)] transition-colors font-mono placeholder:text-[var(--color-text-placeholder)]"
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && value.trim()) handleConnect()
-            if (e.key === 'Escape') onClose()
-          }}
-        />
-        <p className="text-[11px] text-white/15 mt-2">
-          Get a token at{' '}
-          <a href="https://developer.x.com" target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-white/50 underline underline-offset-2 transition-colors">
-            developer.x.com
-          </a>
-          {' '}(pay-per-use app, read scopes)
+    <Modal open={open} onClose={onClose} aria-labelledby="x-credentials-title">
+      <div className="mb-6">
+        <h2 id="x-credentials-title" className="text-[14px] font-semibold text-[var(--color-text-primary)]">Connect to X</h2>
+        <p className="text-[11px] text-[var(--color-text-tertiary)] mt-0.5">
+          Pay-per-use — credits deducted per request. Stored locally, never sent to third parties.
         </p>
-
-        {/* Reserved slot: keeps the modal height stable whether or not an error is shown. */}
-        <div className="min-h-[1.5rem] mt-2" aria-live="polite">
-          {error && <p role="alert" className="text-[11px] text-red-300 leading-snug">{error}</p>}
-        </div>
-
-        <div className="flex gap-2 mt-4 justify-end">
-          {bearerToken && (
-            <button onClick={() => { clearBearerToken(); setValue(''); setError(null) }} className="px-3 py-1.5 text-[12px] text-white/20 hover:text-white/40 transition-colors">
-              Disconnect
-            </button>
-          )}
-          <button onClick={onClose} className="px-3 py-1.5 text-[12px] text-white/30 hover:text-white/50 transition-colors">
-            Cancel
-          </button>
-          <button
-            onClick={handleConnect}
-            disabled={!value.trim() || busy}
-            aria-busy={busy || undefined}
-            className="px-4 py-1.5 text-[12px] font-medium bg-white text-black rounded-md hover:bg-white/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            {busy ? '…' : 'Connect'}
-          </button>
-        </div>
       </div>
-    </div>
+
+      <input
+        type="password"
+        value={value}
+        onChange={(e) => { setValue(e.target.value); if (error) setError(null) }}
+        placeholder="Bearer token (AAAA...)"
+        className={`${modalInputClass} text-[13px] font-mono`}
+        autoFocus
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && value.trim()) handleConnect()
+          if (e.key === 'Escape') onClose()
+        }}
+      />
+      <p className="text-[11px] text-[var(--color-text-tertiary)] mt-2">
+        Get a token at{' '}
+        <a
+          href="https://developer.x.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] underline underline-offset-2 transition-colors"
+        >
+          developer.x.com
+        </a>
+        {' '}(pay-per-use app, read scopes)
+      </p>
+
+      <div className="min-h-[1.5rem] mt-2" aria-live="polite">
+        {error && <p role="alert" className="text-[11px] text-red-300 leading-snug">{error}</p>}
+      </div>
+
+      <div className="flex gap-2 mt-4 justify-end">
+        {bearerToken && (
+          <button
+            type="button"
+            onClick={() => { clearBearerToken(); setValue(''); setError(null) }}
+            className={`${modalGhostBtnClass} text-[12px] hover:text-red-300`}
+          >
+            Disconnect
+          </button>
+        )}
+        <button type="button" onClick={onClose} className={`${modalGhostBtnClass} text-[12px]`}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleConnect}
+          disabled={!value.trim() || busy}
+          aria-busy={busy || undefined}
+          className={`${modalPrimaryBtnClass} text-[12px]`}
+        >
+          {busy ? '…' : 'Connect'}
+        </button>
+      </div>
+    </Modal>
   )
 }

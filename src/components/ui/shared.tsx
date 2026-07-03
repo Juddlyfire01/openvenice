@@ -30,7 +30,7 @@ export function TextArea({ value, onChange, placeholder, rows = 3, ariaLabel, ma
       aria-label={ariaLabel ?? placeholder}
       maxLength={maxLength}
       autoFocus={autoFocus}
-      className="w-full bg-[var(--color-bg-input)] border border-[var(--color-border-soft)] rounded-lg px-3 py-2.5 text-[15px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)] transition-colors resize-none placeholder:text-[var(--color-text-placeholder)] leading-relaxed"
+      className="w-full bg-[var(--color-bg-base)] border border-[var(--color-border-soft)] rounded-lg px-3 py-2.5 text-[15px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)] transition-colors resize-none placeholder:text-[var(--color-text-placeholder)] leading-relaxed"
     />
   )
 }
@@ -100,8 +100,8 @@ export function PillGroup({ options, value, onChange, ariaLabel }: {
           className={cn(
             'text-[13px] font-medium px-2.5 py-1 rounded-md border transition-all duration-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--color-accent)]',
             o.value === value
-              ? 'border-[var(--color-border-strong)] bg-[var(--color-accent-soft)] text-[var(--color-text-primary)] shadow-none'
-              : 'border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] hover:bg-white/[0.02]',
+              ? 'border-[var(--color-border-strong)] bg-[var(--color-bg-raised)] text-[var(--color-text-primary)]'
+              : 'border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]',
           )}
         >
           {o.label}
@@ -140,7 +140,7 @@ export function ExamplePrompts({ items, onPick, title = 'Try one of these' }: {
             key={text}
             type="button"
             onClick={() => onPick(text)}
-            className="group text-left px-3.5 py-3 rounded-xl border border-[var(--color-border-faint)] bg-white/[0.015] hover:border-[var(--color-border-strong)] hover:bg-white/[0.04] transition-all text-[13.5px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
+            className="group text-left px-3.5 py-3 rounded-xl border border-[var(--color-border-faint)] bg-[var(--color-bg-base)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-raised)] transition-all text-[13.5px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
           >
             <span className="flex items-start gap-2">
               <span className="text-[var(--color-text-quaternary)] group-hover:text-[var(--color-accent)] transition-colors mt-px">→</span>

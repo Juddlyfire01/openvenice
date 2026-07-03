@@ -6,13 +6,13 @@ import { ProfileCard } from './profile-card'
 import { NetworkGraph } from './network-graph'
 import { DraftWorkspace } from './draft-workspace'
 import { runGather } from '../../lib/x-intel/orchestrate'
-import { cn } from '../../lib/utils'
+import { SubTabs } from '../ui/sub-tabs'
 
-const SUB_TABS: { id: IntelSubTab; label: string }[] = [
-  { id: 'profile', label: 'Profile' },
-  { id: 'feed', label: 'Feed' },
-  { id: 'network', label: 'Network' },
-  { id: 'draft', label: 'Post' },
+const SUB_TABS = [
+  { id: 'profile' as const, label: 'Profile' },
+  { id: 'feed' as const, label: 'Feed' },
+  { id: 'network' as const, label: 'Network' },
+  { id: 'draft' as const, label: 'Post' },
 ]
 
 export function IntelView() {
@@ -34,20 +34,7 @@ export function IntelView() {
       <TargetRail />
 
       <div className="flex flex-col flex-1 min-w-0">
-        <div className="flex items-center gap-1 px-4 py-1.5 border-b border-white/[0.04]">
-          {SUB_TABS.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => setActiveSubTab(id)}
-              className={cn(
-                'text-[11px] font-medium px-2.5 py-[3px] rounded-full transition-all duration-150',
-                activeSubTab === id ? 'bg-[var(--color-accent-soft)] text-[var(--color-text-primary)] border border-[var(--color-accent)]/25' : 'bg-white/[0.03] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] hover:bg-white/[0.05]',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SubTabs tabs={SUB_TABS} value={activeSubTab} onChange={setActiveSubTab} className="px-4" size="sm" />
         <div className="flex-1 min-h-0">
           {activeSubTab === 'profile' && <ProfileCard />}
           {activeSubTab === 'network' && <NetworkGraph />}

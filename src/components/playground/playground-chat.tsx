@@ -178,7 +178,7 @@ export function PlaygroundChat() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[var(--color-bg-input)]">
+    <div className="flex flex-col h-full bg-[var(--color-bg-base)]">
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 ? (
           <div className="flex flex-col gap-3 pt-8">
@@ -251,7 +251,7 @@ export function PlaygroundChat() {
         )}
       </div>
 
-      <div className="shrink-0 border-t border-white/[0.06] p-3">
+      <div className="shrink-0 border-t border-[var(--color-border-faint)] p-3">
         {error && <div className="mb-2 text-[13px] text-red-300/95">{error}</div>}
         <div className="flex items-end gap-2">
           <textarea
@@ -266,20 +266,22 @@ export function PlaygroundChat() {
             placeholder={isThinking ? 'Agent is working…' : 'Describe a workflow or change…'}
             rows={2}
             disabled={isThinking}
-            className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-[13.5px] text-white/90 outline-none resize-none placeholder:text-white/30 focus:border-white/[0.2] disabled:opacity-60"
+            className="flex-1 bg-[var(--color-bg-base)] border border-[var(--color-border-input)] rounded-lg px-3 py-2 text-[13.5px] text-[var(--color-text-primary)] outline-none resize-none placeholder:text-[var(--color-text-placeholder)] focus:border-[var(--color-border-strong)] disabled:opacity-60"
           />
           {isThinking ? (
             <button
+              type="button"
               onClick={cancel}
-              className="shrink-0 px-3 py-2 text-[13px] text-white/85 hover:text-white border border-white/[0.12] hover:bg-white/[0.05] rounded-lg transition-colors"
+              className="shrink-0 px-3 py-2 text-[13px] font-medium text-[var(--color-text-primary)] bg-[var(--color-border-faint)] hover:bg-[var(--color-border-soft)] border border-[var(--color-border-soft)] rounded-lg transition-colors"
             >
               Stop
             </button>
           ) : (
             <button
+              type="button"
               onClick={() => send(input)}
               disabled={!input.trim()}
-              className="shrink-0 px-4 py-2 text-[13px] font-medium bg-white text-black rounded-lg hover:bg-white/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="shrink-0 px-4 py-2 text-[13px] font-medium bg-[var(--color-btn-primary-bg)] text-[var(--color-btn-primary-fg)] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Send
             </button>

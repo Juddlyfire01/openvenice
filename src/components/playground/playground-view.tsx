@@ -111,7 +111,7 @@ export function PlaygroundView() {
 
   return (
     <div className="flex h-full">
-      <div className="w-[420px] shrink-0 border-r border-[var(--color-border-faint)] bg-[var(--color-bg-input)] flex flex-col">
+      <div className="w-[420px] shrink-0 border-r border-[var(--color-border-faint)] bg-[var(--color-bg-base)] flex flex-col">
         <div className="flex items-center justify-between gap-2 px-3 h-11 border-b border-[var(--color-border-faint)] bg-[var(--color-bg-base)] shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-[14px] font-medium text-white/65 shrink-0">Playground</span>

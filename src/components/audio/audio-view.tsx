@@ -7,7 +7,7 @@ import { useBlobUrl } from '../../hooks/use-blob-url'
 import { Select } from '../ui/select'
 import { Label, TextArea, PrimaryButton, ErrorText, EmptyState } from '../ui/shared'
 import { GenerationView } from '../ui/generation-view'
-import { cn } from '../../lib/utils'
+import { SegmentedControl } from '../ui/sub-tabs'
 import { toast } from '../../stores/toast-store'
 
 const AUDIO_EXAMPLES = [
@@ -108,16 +108,11 @@ export function AudioView() {
 
   const controls = (
     <>
-      <div className="flex gap-px bg-white/[0.03] rounded-lg p-0.5 border border-white/[0.05]">
-        {(['tts', 'transcribe'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={cn(
-            'flex-1 px-3 py-2 text-[13px] font-medium rounded-[7px] transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]',
-            tab === t ? 'bg-white text-black shadow-sm' : 'text-white/55 hover:text-white/85',
-          )}>
-            {t === 'tts' ? 'Text to Speech' : 'Transcribe'}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        options={[['tts', 'Text to Speech'], ['transcribe', 'Transcribe']] as const}
+        value={tab}
+        onChange={setTab}
+      />
 
       {tab === 'tts' ? (
         <>

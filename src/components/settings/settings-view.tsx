@@ -39,12 +39,15 @@ export function SettingsView() {
                 onClick={() => setCat(c.id)}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex flex-col gap-0.5 rounded-lg px-2.5 py-2 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2',
+                  'relative flex flex-col gap-0.5 rounded-lg px-2.5 py-2 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2',
                   active
-                    ? 'bg-white/[0.06] text-[var(--color-text-primary)]'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-white/[0.03]',
+                    ? 'text-[var(--color-text-primary)]'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
                 )}
               >
+                {active && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-[var(--color-accent)]" />
+                )}
                 <span className="text-[14px] font-medium">{c.label}</span>
                 <span className="text-[11px] text-[var(--color-text-tertiary)]">{c.desc}</span>
               </button>

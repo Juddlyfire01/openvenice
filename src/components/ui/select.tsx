@@ -38,15 +38,16 @@ export function Select({ value, onChange, options, placeholder = 'Select...', se
   return (
     <div ref={ref} className={cn('relative', className)}>
       <button
+        type="button"
         onClick={() => { const next = !open; setOpen(next); if (!next) setSearch('') }}
         className={cn(
-          'w-full flex items-center justify-between gap-2 bg-transparent border border-white/[0.06] rounded-md px-2.5 py-1.5 text-[15px] hover:border-white/[0.12] transition-colors outline-none',
-          open && 'border-white/[0.15]',
+          'w-full flex items-center justify-between gap-2 bg-[var(--color-bg-base)] border border-[var(--color-border-soft)] rounded-md px-2.5 py-1.5 text-[15px] hover:border-[var(--color-border-strong)] transition-colors outline-none',
+          open && 'border-[var(--color-border-strong)]',
         )}
       >
-        <span className={cn('truncate text-[15px]', value ? 'text-white/70' : 'text-white/20')}>{selectedLabel}</span>
+        <span className={cn('truncate text-[15px]', value ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-placeholder)]')}>{selectedLabel}</span>
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-          className={cn('shrink-0 text-white/20 transition-transform duration-150', open && 'rotate-180')}>
+          className={cn('shrink-0 text-[var(--color-text-tertiary)] transition-transform duration-150', open && 'rotate-180')}>
           <path d="M2.5 3.75L5 6.25L7.5 3.75" />
         </svg>
       </button>
@@ -54,29 +55,30 @@ export function Select({ value, onChange, options, placeholder = 'Select...', se
       {open && (
         <div className="absolute z-50 w-full mt-0.5 bg-[var(--color-bg-raised)] border border-[var(--color-border-soft)] rounded-lg shadow-2xl shadow-black/50 animate-scale-in overflow-hidden">
           {searchable && (
-            <div className="p-1 border-b border-white/[0.04]">
+            <div className="p-1 border-b border-[var(--color-border-faint)]">
               <input
                 ref={inputRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search..."
-                className="w-full bg-white/[0.03] rounded px-2 py-1 text-[15px] text-white/70 outline-none placeholder:text-white/12"
+                className="w-full bg-[var(--color-bg-base)] rounded px-2 py-1 text-[15px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-placeholder)]"
               />
             </div>
           )}
           <div className="max-h-60 overflow-y-auto p-0.5">
             {filtered.length === 0 ? (
-              <div className="px-2.5 py-2.5 text-[14px] text-white/15 text-center">No results</div>
+              <div className="px-2.5 py-2.5 text-[14px] text-[var(--color-text-tertiary)] text-center">No results</div>
             ) : (
               filtered.map((o) => (
                 <button
                   key={o.value}
+                  type="button"
                   onClick={() => { onChange(o.value); setOpen(false) }}
                   className={cn(
                     'w-full text-left px-3 py-[6px] text-[15px] rounded transition-colors',
                     o.value === value
-                      ? 'bg-white/[0.07] text-white/80'
-                      : 'text-white/40 hover:bg-white/[0.04] hover:text-white/70',
+                      ? 'bg-[var(--color-bg-overlay)] text-[var(--color-text-primary)]'
+                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-border-faint)] hover:text-[var(--color-text-primary)]',
                   )}
                 >
                   {o.label}

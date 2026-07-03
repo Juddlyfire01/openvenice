@@ -70,15 +70,20 @@ export function TargetRail() {
               <div
                 key={t}
                 className={cn(
-                  'group flex items-center gap-1.5 px-2 py-[5px] rounded-md text-[11px] cursor-pointer transition-colors',
-                  t === activeTarget ? 'bg-white/[0.06] text-white/60' : 'text-white/20 hover:text-white/45 hover:bg-white/[0.02]',
+                  'group relative flex items-center gap-1.5 px-2 py-[5px] rounded-md text-[11px] cursor-pointer transition-colors',
+                  t === activeTarget
+                    ? 'text-[var(--color-text-primary)]'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border-faint)]',
                 )}
                 onClick={() => setActiveTarget(t)}
               >
+                {t === activeTarget && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-3.5 rounded-full bg-[var(--color-accent)]" />
+                )}
                 {report?.profile?.avatarUrl ? (
                   <img src={report.profile.avatarUrl} alt="" className="w-4 h-4 rounded-full shrink-0" />
                 ) : (
-                  <div className="w-4 h-4 rounded-full bg-white/[0.06] shrink-0" />
+                  <div className="w-4 h-4 rounded-full bg-[var(--color-bg-raised)] shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between gap-1 min-w-0">
@@ -88,14 +93,14 @@ export function TargetRail() {
                         title={`All-time API spend for @${t}`}
                         className={cn(
                           'shrink-0 font-mono tabular-nums text-[9px]',
-                          t === activeTarget ? 'text-white/35' : 'text-white/20',
+                          t === activeTarget ? 'text-[var(--color-text-secondary)]' : 'text-[var(--color-text-tertiary)]',
                         )}
                       >
                         ${report!.totalCost.toFixed(3)}
                       </span>
                     )}
                   </div>
-                  <div className="text-[9px] text-white/12">
+                  <div className="text-[9px] text-[var(--color-text-tertiary)]">
                     {busy === t ? 'gathering…' : relativeTime(report?.profile?.gatheredAt)}
                   </div>
                 </div>
@@ -103,14 +108,14 @@ export function TargetRail() {
                   onClick={(e) => { e.stopPropagation(); gather(t) }}
                   disabled={busy === t}
                   title="Re-gather"
-                  className="opacity-0 group-hover:opacity-100 text-white/15 hover:text-white/50 transition-all shrink-0 p-0.5 disabled:opacity-30"
+                  className="opacity-0 group-hover:opacity-100 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-all shrink-0 p-0.5 disabled:opacity-30"
                 >
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 11-2.6-6.4" /><polyline points="21 3 21 9 15 9" /></svg>
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); removeTarget(t) }}
                   title="Remove"
-                  className="opacity-0 group-hover:opacity-100 text-white/15 hover:text-white/50 transition-all shrink-0 p-0.5"
+                  className="opacity-0 group-hover:opacity-100 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-all shrink-0 p-0.5"
                 >
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                 </button>

@@ -2,13 +2,13 @@ import { useToastStore, type Toast } from '../../stores/toast-store'
 import { cn } from '../../lib/utils'
 
 const VARIANT_STYLES: Record<Toast['variant'], string> = {
-  info: 'border-[var(--color-border-soft)] bg-[var(--color-bg-overlay)]',
+  info: 'border-[var(--color-border-soft)] bg-[var(--color-bg-raised)]',
   success: 'border-green-500/30 bg-green-500/[0.06]',
   error: 'border-red-500/30 bg-red-500/[0.06]',
 }
 
 const VARIANT_TITLE: Record<Toast['variant'], string> = {
-  info: 'text-white/75',
+  info: 'text-[var(--color-text-primary)]',
   success: 'text-green-200/85',
   error: 'text-red-200/85',
 }
@@ -39,12 +39,12 @@ export function Toaster() {
             <div className="flex-1 min-w-0">
               <div className={cn('text-[13.5px] font-medium', VARIANT_TITLE[t.variant])}>{t.title}</div>
               {t.description && (
-                <div className="text-[12.5px] text-white/45 mt-0.5 leading-relaxed break-words">{t.description}</div>
+                <div className="text-[12.5px] text-[var(--color-text-secondary)] mt-0.5 leading-relaxed break-words">{t.description}</div>
               )}
               {t.action && (
                 <button
                   onClick={() => { t.action?.onClick(); dismiss(t.id) }}
-                  className="mt-1.5 text-[12.5px] font-medium text-white/70 hover:text-white underline underline-offset-2"
+                  className="mt-1.5 text-[12.5px] font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] underline underline-offset-2"
                 >
                   {t.action.label}
                 </button>
@@ -53,7 +53,7 @@ export function Toaster() {
             <button
               onClick={() => dismiss(t.id)}
               aria-label="Dismiss notification"
-              className="text-white/25 hover:text-white/60 transition-colors p-0.5 -m-0.5 shrink-0 rounded focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/30"
+              className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-colors p-0.5 -m-0.5 shrink-0 rounded focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--color-accent)]"
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

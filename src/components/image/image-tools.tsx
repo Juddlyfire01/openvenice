@@ -4,6 +4,7 @@ import { useImageEdit, useImageUpscale, useBackgroundRemove } from '../../hooks/
 import { useBlobUrl } from '../../hooks/use-blob-url'
 import { Select } from '../ui/select'
 import { Label, TextArea, PrimaryButton, ErrorText, EmptyState } from '../ui/shared'
+import { SegmentedControl } from '../ui/sub-tabs'
 import { cn } from '../../lib/utils'
 import { toast } from '../../stores/toast-store'
 
@@ -86,18 +87,12 @@ export function ImageTools() {
 
   return (
     <div className="flex h-full">
-      <div className="w-96 border-r border-[var(--color-border-faint)] bg-[var(--color-bg-input)] p-6 flex flex-col gap-4 overflow-y-auto shrink-0">
-        {/* Tool selector */}
-        <div className="flex gap-px bg-white/[0.02] rounded-lg p-0.5 border border-white/[0.04]">
-          {([['edit', 'Edit'], ['upscale', 'Upscale'], ['remove-bg', 'Remove BG']] as const).map(([id, label]) => (
-            <button key={id} onClick={() => { setTool(id); resetResult() }} className={cn(
-              'flex-1 px-2 py-2.5 text-[14px] font-medium rounded-[7px] transition-all duration-150',
-              tool === id ? 'bg-white text-black' : 'text-white/25 hover:text-white/45',
-            )}>
-              {label}
-            </button>
-          ))}
-        </div>
+      <div className="w-96 border-r border-[var(--color-border-faint)] bg-[var(--color-bg-base)] p-6 flex flex-col gap-4 overflow-y-auto shrink-0">
+        <SegmentedControl
+          options={[['edit', 'Edit'], ['upscale', 'Upscale'], ['remove-bg', 'Remove BG']] as const}
+          value={tool}
+          onChange={(id) => { setTool(id); resetResult() }}
+        />
 
         {/* Image upload */}
         <div>

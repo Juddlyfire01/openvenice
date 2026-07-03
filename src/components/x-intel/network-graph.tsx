@@ -137,7 +137,7 @@ export function NetworkGraph() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-4 py-1.5 border-b border-white/[0.04] text-[10px]">
+      <div className="flex items-center gap-2 px-4 py-1.5 border-b border-[var(--color-border-faint)] text-[10px]">
         {KINDS.map((k) => (
           <button
             key={k}
@@ -148,14 +148,14 @@ export function NetworkGraph() {
             })}
             className={cn(
               'px-2 py-[2px] rounded-full font-medium transition-all border',
-              kindFilter.has(k) ? 'text-white/60' : 'text-white/15 opacity-50',
+              kindFilter.has(k) ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-tertiary)] opacity-60',
             )}
             style={{ borderColor: `${KIND_COLORS[k]}55` }}
           >
             {k}
           </button>
         ))}
-        <label className="flex items-center gap-1 text-white/25 ml-2">
+        <label className="flex items-center gap-1 text-[var(--color-text-tertiary)] ml-2">
           weight ≥
           <input
             type="number" min={1} value={minWeight}
@@ -165,13 +165,13 @@ export function NetworkGraph() {
         </label>
         <div className="flex-1" />
         {unresolved.length > 0 && (
-          <span className="text-white/15">{unresolved.length} unresolved (quote/reply targets need a post lookup — future)</span>
+          <span className="text-[var(--color-text-tertiary)]">{unresolved.length} unresolved (quote/reply targets need a post lookup — future)</span>
         )}
         <button
           onClick={() => runRefresh('mentions')}
           disabled={!!refreshing || !bearerToken}
           title="Pull who's mentioning this target"
-          className="text-[10px] font-medium px-2 py-1 rounded-md border border-white/[0.08] text-white/55 hover:text-white/85 hover:border-white/[0.2] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="text-[10px] font-medium px-2 py-1 rounded-md border border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {refreshing === 'mentions' ? 'Pulling…' : '+ Mentions'}
         </button>

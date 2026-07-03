@@ -5,6 +5,7 @@ import { useVideo } from '../../hooks/use-video'
 import { Select } from '../ui/select'
 import { Label, TextArea, PrimaryButton, PillGroup, ErrorText } from '../ui/shared'
 import { GenerationView } from '../ui/generation-view'
+import { SegmentedControl } from '../ui/sub-tabs'
 import { cn } from '../../lib/utils'
 import type { VideoQueueRequest, VideoConstraints } from '../../types/venice'
 
@@ -126,30 +127,14 @@ export function VideoView() {
 
         {/* Text / Image mode toggle */}
         {(hasTextMode || hasImageMode) && (
-          <div className="flex gap-px bg-white/[0.02] rounded-lg p-0.5 border border-white/[0.04]">
-            {hasTextMode && (
-              <button
-                onClick={() => setMode('text')}
-                className={cn(
-                  'flex-1 px-3 py-2.5 text-[15px] font-medium rounded-[7px] transition-all duration-150',
-                  mode === 'text' ? 'bg-white text-black' : 'text-white/25 hover:text-white/45',
-                )}
-              >
-                Text to Video
-              </button>
-            )}
-            {hasImageMode && (
-              <button
-                onClick={() => setMode('image')}
-                className={cn(
-                  'flex-1 px-3 py-2.5 text-[15px] font-medium rounded-[7px] transition-all duration-150',
-                  mode === 'image' ? 'bg-white text-black' : 'text-white/25 hover:text-white/45',
-                )}
-              >
-                Image to Video
-              </button>
-            )}
-          </div>
+          <SegmentedControl
+            options={[
+              ...(hasTextMode ? [['text', 'Text to Video'] as const] : []),
+              ...(hasImageMode ? [['image', 'Image to Video'] as const] : []),
+            ]}
+            value={mode}
+            onChange={setMode}
+          />
         )}
 
         <div>

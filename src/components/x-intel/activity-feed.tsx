@@ -57,14 +57,17 @@ export function ActivityFeed() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-1 px-4 py-1.5 border-b border-white/[0.04]">
+      <div className="flex items-center gap-1 px-4 py-1.5 border-b border-[var(--color-border-faint)]">
         {FILTERS.map((f) => (
           <button
             key={f}
+            type="button"
             onClick={() => setFilter(f)}
             className={cn(
-              'text-[10px] font-medium px-2 py-[2px] rounded-full transition-all',
-              filter === f ? 'bg-white/[0.12] text-white/70' : 'text-white/20 hover:text-white/40',
+              'text-[10px] font-medium px-2 py-1 rounded-md transition-colors capitalize',
+              filter === f
+                ? 'text-[var(--color-text-primary)] bg-[var(--color-bg-raised)]'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
             )}
           >
             {f}
