@@ -1,4 +1,5 @@
 import { useXIntelStore, type IntelSubTab } from '../../stores/x-intel-store'
+import { TargetRail } from './target-rail'
 import { cn } from '../../lib/utils'
 
 const SUB_TABS: { id: IntelSubTab; label: string }[] = [
@@ -15,10 +16,7 @@ export function IntelView() {
 
   return (
     <div className="flex h-full">
-      {/* Target rail placeholder — replaced in Task 9 */}
-      <div className="w-52 shrink-0 border-r border-white/[0.06] bg-[#0a0a0a] flex items-center justify-center">
-        <span className="text-[11px] text-white/15 px-4 text-center">Add a target to start gathering intel</span>
-      </div>
+      <TargetRail />
 
       <div className="flex flex-col flex-1 min-w-0">
         <div className="flex items-center gap-1 px-4 py-1.5 border-b border-white/[0.04]">

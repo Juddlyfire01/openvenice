@@ -1,0 +1,113 @@
+import { useState } from 'react'
+import { useXIntelStore } from '../../stores/x-intel-store'
+import { useXAuthStore } from '../../stores/x-intel-auth-store'
+import { runGather } from '../../lib/x-intel/orchestrate'
+import { CostMeter } from './cost-meter'
+import { cn } from '../../lib/utils'
+
+function relativeTime(iso: string | undefined): string {
+  if (!iso) return 'never'
+  const ms = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(ms / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
+export function TargetRail() {
+  const { targets, reports, activeTarget, setActiveTarget, addTarget, removeTarget } = useXIntelStore()
+  const bearerToken = useXAuthStore((s) => s.bearerToken)
+  const [input, setInput] = useState('')
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const gather = async (username: string) => {
+    setBusy(username)
+    setError(null)
+    try {
+      await runGather(username)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gather failed')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleAdd = async () => {
+    const name = input.trim().replace(/^@/, '')
+    if (!name) return
+    setInput('')
+    addTarget(name)
+    await gather(name)
+  }
+
+  return (
+    <div className="w-52 shrink-0 border-r border-white/[0.06] bg-[#0a0a0a] flex flex-col">
+      <div className="p-2">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleAdd() }}
+          placeholder={bearerToken ? '+ Add target (@username)' : 'Set X Key first'}
+          disabled={!bearerToken}
+          className="w-full bg-[#0e0e0e] border border-white/[0.06] rounded-md px-2 py-1.5 text-[11px] text-white outline-none focus:border-white/[0.12] transition-colors placeholder:text-white/15 disabled:opacity-40"
+        />
+        {error && <p className="text-[10px] text-red-400/70 mt-1 px-0.5">{error}</p>}
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-1.5 pb-2">
+        {targets.length === 0 ? (
+          <div className="px-2 py-5 text-[11px] text-white/10 text-center">
+            Add a target to start gathering intel
+            <div className="mt-2 text-white/8">e.g. ErikVoorhees · venice_ai</div>
+          </div>
+        ) : (
+          targets.map((t) => {
+            const report = reports[t]
+            return (
+              <div
+                key={t}
+                className={cn(
+                  'group flex items-center gap-1.5 px-2 py-[5px] rounded-md text-[11px] cursor-pointer transition-colors',
+                  t === activeTarget ? 'bg-white/[0.06] text-white/60' : 'text-white/20 hover:text-white/45 hover:bg-white/[0.02]',
+                )}
+                onClick={() => setActiveTarget(t)}
+              >
+                {report?.profile?.avatarUrl ? (
+                  <img src={report.profile.avatarUrl} alt="" className="w-4 h-4 rounded-full shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full bg-white/[0.06] shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="truncate">@{t}</div>
+                  <div className="text-[9px] text-white/12">
+                    {busy === t ? 'gathering…' : relativeTime(report?.profile?.gatheredAt)}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); gather(t) }}
+                  disabled={busy === t}
+                  title="Re-gather"
+                  className="opacity-0 group-hover:opacity-100 text-white/15 hover:text-white/50 transition-all shrink-0 p-0.5 disabled:opacity-30"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 11-2.6-6.4" /><polyline points="21 3 21 9 15 9" /></svg>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeTarget(t) }}
+                  title="Remove"
+                  className="opacity-0 group-hover:opacity-100 text-white/15 hover:text-white/50 transition-all shrink-0 p-0.5"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </button>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      <CostMeter />
+    </div>
+  )
+}
