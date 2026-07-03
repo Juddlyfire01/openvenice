@@ -39,7 +39,10 @@ export async function gatherPosts(
   }
   if (opts.sinceId) params.since_id = opts.sinceId
 
-  const resp = await xapi<XPaginatedResponse<XPostRaw>>(`/users/${userId}/tweets`, params)
+  const resp = await xapi<XPaginatedResponse<XPostRaw>>(`/users/${encodeURIComponent(userId)}/tweets`, params)
+  if (!resp.data && resp.errors?.length) {
+    throw new Error(resp.errors[0]?.detail ?? 'X API returned errors')
+  }
   const posts = (resp.data ?? []).map(normalizePost)
   return { data: posts, cost: estimateCost('posts', posts.length) }
 }
@@ -55,13 +58,16 @@ export async function gatherMentions(
   }
   if (opts.sinceId) params.since_id = opts.sinceId
 
-  const resp = await xapi<XPaginatedResponse<XPostRaw>>(`/users/${userId}/mentions`, params)
+  const resp = await xapi<XPaginatedResponse<XPostRaw>>(`/users/${encodeURIComponent(userId)}/mentions`, params)
+  if (!resp.data && resp.errors?.length) {
+    throw new Error(resp.errors[0]?.detail ?? 'X API returned errors')
+  }
   const posts = (resp.data ?? []).map(normalizePost)
   return { data: posts, cost: estimateCost('posts', posts.length) }
 }
 
 export async function resolveUser(userId: string): Promise<GatherResult<Profile>> {
-  const resp = await xapi<XSingleResponse<XUserRaw>>(`/users/${userId}`, {
+  const resp = await xapi<XSingleResponse<XUserRaw>>(`/users/${encodeURIComponent(userId)}`, {
     'user.fields': USER_FIELDS.join(','),
   })
   if (!resp.data) throw new Error(resp.errors?.[0]?.detail ?? `User ${userId} not found`)
