@@ -1,11 +1,39 @@
 import { useState } from 'react'
 import { useXAuthStore } from '../../stores/x-intel-auth-store'
+import { useXIntelStore } from '../../stores/x-intel-store'
+import { validateXKey } from '../../lib/x-intel/validate-x-key'
 
 export function XCredentialsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { bearerToken, setBearerToken, clearBearerToken } = useXAuthStore()
+  const seedTarget = useXIntelStore((s) => s.seedTarget)
   const [value, setValue] = useState(bearerToken ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (!open) return null
+
+  const handleConnect = async () => {
+    const token = value.trim()
+    if (!token || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      const validation = await validateXKey(token)
+      if (!validation.ok) {
+        setError(validation.message)
+        return
+      }
+      setBearerToken(token)
+      // The validation lookup already fetched the default target's profile —
+      // seed it as a starting target (no-op refresh if it already exists).
+      if (validation.profile) seedTarget(validation.profile)
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save token')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
@@ -24,12 +52,12 @@ export function XCredentialsDialog({ open, onClose }: { open: boolean; onClose: 
         <input
           type="password"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => { setValue(e.target.value); if (error) setError(null) }}
           placeholder="Bearer token (AAAA...)"
           className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-white/[0.15] transition-colors font-mono placeholder:text-white/10"
           autoFocus
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && value.trim()) { setBearerToken(value.trim()); onClose() }
+            if (e.key === 'Enter' && value.trim()) handleConnect()
             if (e.key === 'Escape') onClose()
           }}
         />
@@ -41,9 +69,14 @@ export function XCredentialsDialog({ open, onClose }: { open: boolean; onClose: 
           {' '}(pay-per-use app, read scopes)
         </p>
 
-        <div className="flex gap-2 mt-6 justify-end">
+        {/* Reserved slot: keeps the modal height stable whether or not an error is shown. */}
+        <div className="min-h-[1.5rem] mt-2" aria-live="polite">
+          {error && <p role="alert" className="text-[11px] text-red-300 leading-snug">{error}</p>}
+        </div>
+
+        <div className="flex gap-2 mt-4 justify-end">
           {bearerToken && (
-            <button onClick={() => { clearBearerToken(); setValue('') }} className="px-3 py-1.5 text-[12px] text-white/20 hover:text-white/40 transition-colors">
+            <button onClick={() => { clearBearerToken(); setValue(''); setError(null) }} className="px-3 py-1.5 text-[12px] text-white/20 hover:text-white/40 transition-colors">
               Disconnect
             </button>
           )}
@@ -51,11 +84,12 @@ export function XCredentialsDialog({ open, onClose }: { open: boolean; onClose: 
             Cancel
           </button>
           <button
-            onClick={() => { if (value.trim()) { setBearerToken(value.trim()); onClose() } }}
-            disabled={!value.trim()}
+            onClick={handleConnect}
+            disabled={!value.trim() || busy}
+            aria-busy={busy || undefined}
             className="px-4 py-1.5 text-[12px] font-medium bg-white text-black rounded-md hover:bg-white/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Connect
+            {busy ? '…' : 'Connect'}
           </button>
         </div>
       </div>

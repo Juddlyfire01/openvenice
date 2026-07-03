@@ -1,4 +1,4 @@
-const BASE_URL = '/xapi/2'
+export const X_BASE_URL = '/xapi/2'
 
 export class XAPIError extends Error {
   status: number
@@ -25,7 +25,7 @@ function getBearerToken(): string {
 
 export async function xapi<T>(path: string, params: Record<string, string> = {}): Promise<T> {
   const qs = new URLSearchParams(params).toString()
-  const res = await fetch(`${BASE_URL}${path}${qs ? `?${qs}` : ''}`, {
+  const res = await fetch(`${X_BASE_URL}${path}${qs ? `?${qs}` : ''}`, {
     headers: { Authorization: `Bearer ${getBearerToken()}` },
   })
 
