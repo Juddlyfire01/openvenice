@@ -1,5 +1,8 @@
+import { useEffect, useRef } from 'react'
 import { useXIntelStore, type IntelSubTab } from '../../stores/x-intel-store'
 import { TargetRail } from './target-rail'
+import { ActivityFeed } from './activity-feed'
+import { runGather } from '../../lib/x-intel/orchestrate'
 import { cn } from '../../lib/utils'
 
 const SUB_TABS: { id: IntelSubTab; label: string }[] = [
@@ -13,6 +16,16 @@ export function IntelView() {
   const activeSubTab = useXIntelStore((s) => s.activeSubTab)
   const setActiveSubTab = useXIntelStore((s) => s.setActiveSubTab)
   const activeTarget = useXIntelStore((s) => s.activeTarget)
+
+  const ranWatch = useRef(false)
+  useEffect(() => {
+    if (ranWatch.current) return
+    ranWatch.current = true
+    const { targets, reports } = useXIntelStore.getState()
+    for (const t of targets) {
+      if (reports[t]?.watch) runGather(t).catch(() => { /* surfaced on manual gather */ })
+    }
+  }, [])
 
   return (
     <div className="flex h-full">
@@ -33,10 +46,16 @@ export function IntelView() {
             </button>
           ))}
         </div>
-        <div className="flex-1 min-h-0 flex items-center justify-center">
-          <span className="text-[12px] text-white/15">
-            {activeTarget ? `${activeSubTab} — coming in later tasks` : 'No target selected'}
-          </span>
+        <div className="flex-1 min-h-0">
+          {activeSubTab === 'feed' ? (
+            <ActivityFeed />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <span className="text-[12px] text-white/15">
+                {activeTarget ? `${activeSubTab} — coming in later tasks` : 'No target selected'}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
