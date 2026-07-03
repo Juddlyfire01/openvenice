@@ -41,8 +41,13 @@ export function NetworkGraph() {
     }]
 
     // circular layout around the pinned-center target
-    edges.forEach((e, i) => {
-      const angle = (2 * Math.PI * i) / edges.length
+    // De-duplicate node IDs: the same target can appear across multiple edge kinds
+    const placed = new Set<string>([report.profile.id])
+    let placedCount = 0
+    edges.forEach((e) => {
+      if (placed.has(e.target)) return // node already placed; edge still wires to it
+      placed.add(e.target)
+      const angle = (2 * Math.PI * placedCount) / edges.length
       const radius = 260
       const size = 10 + (e.weight / maxWeight) * 16
       nodes.push({
@@ -54,6 +59,7 @@ export function NetworkGraph() {
           borderRadius: 999, padding: '4px 10px', border: `1px solid ${KIND_COLORS[e.kind]}55`,
         },
       })
+      placedCount++
     })
 
     const flowEdges: FlowEdge[] = edges.map((e) => ({
@@ -78,7 +84,11 @@ export function NetworkGraph() {
     const label = String(node.data.label)
     if (!label.startsWith('@') || node.id === report.profile!.id) return
     const username = label.slice(1)
-    if (bearerToken && confirm(`Add @${username} as a new intel target?`)) {
+    if (!bearerToken) {
+      alert('Set your X API key (header → X Key) to add new targets from the network graph.')
+      return
+    }
+    if (confirm(`Add @${username} as a new intel target?`)) {
       addTarget(username)
       runGather(username).catch(() => { /* surfaced in target rail */ })
     }
