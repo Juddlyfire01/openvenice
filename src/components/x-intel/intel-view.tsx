@@ -3,6 +3,7 @@ import { useXIntelStore, type IntelSubTab } from '../../stores/x-intel-store'
 import { TargetRail } from './target-rail'
 import { ActivityFeed } from './activity-feed'
 import { ProfileCard } from './profile-card'
+import { NetworkGraph } from './network-graph'
 import { runGather } from '../../lib/x-intel/orchestrate'
 import { cn } from '../../lib/utils'
 
@@ -50,6 +51,8 @@ export function IntelView() {
         <div className="flex-1 min-h-0">
           {activeSubTab === 'profile' ? (
             <ProfileCard />
+          ) : activeSubTab === 'network' ? (
+            <NetworkGraph />
           ) : activeSubTab === 'feed' ? (
             <ActivityFeed />
           ) : (
