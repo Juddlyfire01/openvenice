@@ -25,6 +25,30 @@ export interface AppearanceSnapshot {
   reduceMotion?: boolean
 }
 
+export const FAVICON_VERSION = '5'
+
+export function faviconHrefForTheme(theme: string): string {
+  const base = theme === 'light'
+    ? '/favicon-light.svg'
+    : theme === 'venice'
+      ? '/favicon-venice.svg'
+      : '/favicon-dark.svg'
+  return `${base}?v=${FAVICON_VERSION}`
+}
+
+export function applyFaviconForTheme(theme: string, doc: Document = document) {
+  const href = faviconHrefForTheme(theme)
+  let link = doc.querySelector<HTMLLinkElement>('link[rel="icon"]')
+  if (!link) {
+    link = doc.createElement('link')
+    link.rel = 'icon'
+    link.type = 'image/svg+xml'
+    doc.head.appendChild(link)
+  }
+  // Assigning .href forces the browser to re-fetch (path-only setAttribute can stick in cache).
+  link.href = href
+}
+
 export function applyAppearanceToHtml(el: HTMLElement, appearance: AppearanceSnapshot) {
   const rawScale = appearance.scale ?? appearance.zoom ?? 100
   const scale = (SCALE_STEPS.includes(rawScale as Scale) ? rawScale : 100) as Scale
@@ -41,6 +65,7 @@ export function applyAppearanceToHtml(el: HTMLElement, appearance: AppearanceSna
   if (appearance.theme) {
     el.dataset.theme = appearance.theme
     el.style.colorScheme = appearance.theme === 'light' ? 'light' : 'dark'
+    applyFaviconForTheme(appearance.theme, el.ownerDocument)
   }
 
   if (appearance.reduceMotion) {

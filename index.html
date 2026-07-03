@@ -8,28 +8,36 @@
       (function () {
         try {
           var html = document.documentElement
-          html.dataset.theme = 'venice'
+          var theme = 'venice'
+          html.dataset.theme = theme
           html.style.colorScheme = 'dark'
           var raw = localStorage.getItem('venice-settings')
-          if (!raw) return
-          var data = JSON.parse(raw)
-          var s = data.state || data
-          if (s.theme) html.dataset.theme = s.theme
-          html.style.colorScheme = s.theme === 'light' ? 'light' : 'dark'
-          var scale = s.scale != null ? s.scale : (s.zoom != null ? s.zoom : 100)
-          html.style.setProperty('--ui-scale', String(scale / 100))
-          html.style.removeProperty('zoom')
-          var fontScale = { sm: 0.9, md: 1, lg: 1.12 }
-          if (s.fontScale && fontScale[s.fontScale]) {
-            html.style.setProperty('--font-scale', String(fontScale[s.fontScale]))
+          if (raw) {
+            var data = JSON.parse(raw)
+            var s = data.state || data
+            if (s.theme) theme = s.theme
+            html.dataset.theme = theme
+            html.style.colorScheme = theme === 'light' ? 'light' : 'dark'
+            var scale = s.scale != null ? s.scale : (s.zoom != null ? s.zoom : 100)
+            html.style.setProperty('--ui-scale', String(scale / 100))
+            html.style.removeProperty('zoom')
+            var fontScale = { sm: 0.9, md: 1, lg: 1.12 }
+            if (s.fontScale && fontScale[s.fontScale]) {
+              html.style.setProperty('--font-scale', String(fontScale[s.fontScale]))
+            }
+            var densitySpace = s.density === 'compact' ? 0.82 : 1
+            html.style.setProperty('--density-space', String(densitySpace))
+            if (s.reduceMotion) html.dataset.reduceMotion = String(s.reduceMotion)
+            if (s.density) html.dataset.density = s.density
           }
-          var densitySpace = s.density === 'compact' ? 0.82 : 1
-          html.style.setProperty('--density-space', String(densitySpace))
-          if (s.reduceMotion) html.dataset.reduceMotion = String(s.reduceMotion)
-          if (s.density) html.dataset.density = s.density
-          if (s.theme === 'light') {
+          if (theme === 'light') {
             var meta = document.querySelector('meta[name="theme-color"]')
             if (meta) meta.setAttribute('content', '#f4f4f2')
+          }
+          var favicon = document.querySelector('link[rel="icon"]')
+          if (favicon) {
+            var path = theme === 'light' ? '/favicon-light.svg' : theme === 'venice' ? '/favicon-venice.svg' : '/favicon-dark.svg'
+            favicon.href = path + '?v=5'
           }
         } catch (_) { /* ignore corrupt storage */ }
       })()
@@ -44,7 +52,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://api.venice.ai blob: data:; img-src 'self' data: blob: https:; media-src 'self' blob: https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
     />
     <title>OpenVenice — clean UI for the Venice AI API</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon-venice.svg?v=5" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />

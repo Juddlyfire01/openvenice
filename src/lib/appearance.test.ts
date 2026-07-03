@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest'
-import { applyAppearanceToHtml, scaleToFactor } from './appearance'
+import { applyAppearanceToHtml, faviconHrefForTheme, scaleToFactor } from './appearance'
 
 describe('appearance', () => {
   it('scaleToFactor converts percent steps to a multiplier', () => {
     expect(scaleToFactor(100)).toBe(1)
     expect(scaleToFactor(125)).toBe(1.25)
     expect(scaleToFactor(90)).toBe(0.9)
+  })
+
+  it('faviconHrefForTheme maps themes to coat-of-arms variants', () => {
+    expect(faviconHrefForTheme('light')).toBe('/favicon-light.svg?v=5')
+    expect(faviconHrefForTheme('venice')).toBe('/favicon-venice.svg?v=5')
+    expect(faviconHrefForTheme('dark')).toBe('/favicon-dark.svg?v=5')
+    expect(faviconHrefForTheme('grey')).toBe('/favicon-dark.svg?v=5')
   })
 
   it('applyAppearanceToHtml maps legacy zoom to ui-scale', () => {
