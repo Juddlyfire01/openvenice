@@ -28,6 +28,9 @@ export async function generateDraft(
     }),
   })
 
-  const content = resp.choices[0].message.content
-  return (typeof content === 'string' ? content : '').trim()
+  const choice = resp.choices?.[0]
+  if (!choice?.message?.content) {
+    throw new Error('Venice draft generation returned no content — the model may have refused or filtered the request')
+  }
+  return choice.message.content.trim()
 }
