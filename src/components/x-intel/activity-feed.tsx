@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { useXIntelStore } from '../../stores/x-intel-store'
+import { useXAuthStore } from '../../stores/x-intel-auth-store'
+import { refreshPosts } from '../../lib/x-intel/orchestrate'
+import { SectionRefresh, SectionEmpty } from './section-actions'
 import type { Post } from '../../lib/x-intel/types'
 import { cn, formatTokens } from '../../lib/utils'
 
@@ -10,10 +13,44 @@ export function ActivityFeed() {
   const activeTarget = useXIntelStore((s) => s.activeTarget)
   const report = useXIntelStore((s) => (s.activeTarget ? s.reports[s.activeTarget] : undefined))
   const updateReport = useXIntelStore((s) => s.updateReport)
+  const bearerToken = useXAuthStore((s) => s.bearerToken)
   const [filter, setFilter] = useState<KindFilter>('all')
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
+
+  const runRefresh = async () => {
+    if (!activeTarget) return
+    setRefreshing(true)
+    setRefreshError(null)
+    try {
+      await refreshPosts(activeTarget)
+    } catch (e) {
+      setRefreshError(e instanceof Error ? e.message : 'Refresh failed')
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   if (!activeTarget || !report) {
     return <div className="flex items-center justify-center h-full text-[12px] text-white/15">No target selected</div>
+  }
+
+  // Per-section refresh timestamp (bumps even on a zero-new-posts pull), falling
+  // back to the newest post's gatheredAt for reports persisted before this field.
+  const lastGathered = report.refreshedAt?.feed ?? report.posts[0]?.gatheredAt
+
+  if (report.posts.length === 0) {
+    return (
+      <SectionEmpty
+        title="No posts gathered yet"
+        hint={bearerToken ? `Fetch @${activeTarget}'s recent posts (up to 50 per pull).` : 'Set your X key first (header → X Key).'}
+        actionLabel="Gather posts"
+        onAction={runRefresh}
+        busy={refreshing}
+        disabled={!bearerToken}
+        error={refreshError}
+      />
+    )
   }
 
   const posts = filter === 'all' ? report.posts : report.posts.filter((p) => p.kind === filter)
@@ -43,6 +80,13 @@ export function ActivityFeed() {
           />
           Watch (refresh on open)
         </label>
+        <SectionRefresh
+          onClick={runRefresh}
+          busy={refreshing}
+          disabled={!bearerToken}
+          lastGatheredIso={lastGathered}
+          error={refreshError}
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">

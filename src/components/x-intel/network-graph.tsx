@@ -3,7 +3,8 @@ import { ReactFlow, Background, Controls, type Node, type Edge as FlowEdge } fro
 import '@xyflow/react/dist/style.css'
 import { useXIntelStore } from '../../stores/x-intel-store'
 import { useXAuthStore } from '../../stores/x-intel-auth-store'
-import { runGather } from '../../lib/x-intel/orchestrate'
+import { runGather, refreshPosts, refreshNetworkWithMentions } from '../../lib/x-intel/orchestrate'
+import { SectionRefresh, SectionEmpty } from './section-actions'
 import type { Edge } from '../../lib/x-intel/types'
 import { cn } from '../../lib/utils'
 
@@ -23,6 +24,21 @@ export function NetworkGraph() {
   const bearerToken = useXAuthStore((s) => s.bearerToken)
   const [kindFilter, setKindFilter] = useState<Set<Edge['kind']>>(new Set(KINDS))
   const [minWeight, setMinWeight] = useState(1)
+  const [refreshing, setRefreshing] = useState<null | 'posts' | 'mentions'>(null)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
+
+  const runRefresh = async (mode: 'posts' | 'mentions') => {
+    if (!activeTarget) return
+    setRefreshing(mode)
+    setRefreshError(null)
+    try {
+      await (mode === 'mentions' ? refreshNetworkWithMentions(activeTarget) : refreshPosts(activeTarget))
+    } catch (e) {
+      setRefreshError(e instanceof Error ? e.message : 'Refresh failed')
+    } finally {
+      setRefreshing(null)
+    }
+  }
 
   const edges = useMemo(
     () => (report?.edges ?? []).filter((e) => kindFilter.has(e.kind) && e.weight >= minWeight),
@@ -74,11 +90,32 @@ export function NetworkGraph() {
     return { nodes, flowEdges }
   }, [report?.profile, edges])
 
-  if (!activeTarget || !report?.profile) {
-    return <div className="flex items-center justify-center h-full text-[12px] text-white/15">No target selected or no profile gathered</div>
+  if (!activeTarget || !report) {
+    return <div className="flex items-center justify-center h-full text-[12px] text-white/15">No target selected</div>
+  }
+
+  // No graph yet: nothing gathered, no profile, or gathered posts had no references.
+  if (!report.profile || (report.edges?.length ?? 0) === 0) {
+    return (
+      <SectionEmpty
+        title="No network gathered yet"
+        hint={bearerToken
+          ? `Build @${activeTarget}'s graph from their posts, or pull who's mentioning them.`
+          : 'Set your X key first (header → X Key).'}
+        actionLabel="Gather from posts"
+        onAction={() => runRefresh('posts')}
+        busy={refreshing === 'posts'}
+        disabled={!bearerToken}
+        error={refreshError}
+        secondaryLabel="+ Mentions"
+        onSecondary={() => runRefresh('mentions')}
+        secondaryBusy={refreshing === 'mentions'}
+      />
+    )
   }
 
   const unresolved = (report.edges ?? []).filter((e) => !e.targetUsername && e.target.startsWith('post:'))
+  const lastGathered = report.refreshedAt?.network ?? report.posts[0]?.gatheredAt
 
   const onNodeClick = (_: unknown, node: Node) => {
     const label = String(node.data.label)
@@ -126,6 +163,21 @@ export function NetworkGraph() {
         {unresolved.length > 0 && (
           <span className="text-white/15">{unresolved.length} unresolved (quote/reply targets need a post lookup — future)</span>
         )}
+        <button
+          onClick={() => runRefresh('mentions')}
+          disabled={!!refreshing || !bearerToken}
+          title="Pull who's mentioning this target"
+          className="text-[10px] font-medium px-2 py-1 rounded-md border border-white/[0.08] text-white/55 hover:text-white/85 hover:border-white/[0.2] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {refreshing === 'mentions' ? 'Pulling…' : '+ Mentions'}
+        </button>
+        <SectionRefresh
+          onClick={() => runRefresh('posts')}
+          busy={refreshing === 'posts'}
+          disabled={!bearerToken}
+          lastGatheredIso={lastGathered}
+          error={refreshError}
+        />
       </div>
       <div className="flex-1 min-h-0">
         <ReactFlow

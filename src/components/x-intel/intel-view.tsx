@@ -10,9 +10,9 @@ import { cn } from '../../lib/utils'
 
 const SUB_TABS: { id: IntelSubTab; label: string }[] = [
   { id: 'profile', label: 'Profile' },
-  { id: 'network', label: 'Network' },
   { id: 'feed', label: 'Feed' },
-  { id: 'draft', label: 'Draft' },
+  { id: 'network', label: 'Network' },
+  { id: 'draft', label: 'Post' },
 ]
 
 export function IntelView() {

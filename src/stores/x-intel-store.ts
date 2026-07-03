@@ -3,6 +3,15 @@ import { persist } from 'zustand/middleware'
 import type { Profile, Post, Edge, CharacterProfile, SynthesisSettings } from '../lib/x-intel/types'
 import { DEFAULT_SYNTHESIS_SETTINGS } from '../lib/x-intel/types'
 
+// Per-section "last successfully refreshed" timestamps (ISO). Distinct from a
+// post's gatheredAt: a refresh that returns zero new posts is still a successful
+// refresh and must bump the relevant section here, even though no post changes.
+export interface RefreshedAt {
+  profile?: string
+  feed?: string
+  network?: string
+}
+
 export interface IntelReport {
   username: string          // canonical (as entered, trimmed, no @)
   profile: Profile | null
@@ -14,6 +23,7 @@ export interface IntelReport {
   watch: boolean            // refresh on tab open
   totalCost: number
   createdAt: string
+  refreshedAt: RefreshedAt
 }
 
 export type IntelSubTab = 'profile' | 'network' | 'feed' | 'draft'
@@ -86,6 +96,7 @@ export const useXIntelStore = create<XIntelState>()(
               watch: false,
               totalCost: 0,
               createdAt: new Date().toISOString(),
+              refreshedAt: {},
             },
           },
         }))
@@ -101,7 +112,16 @@ export const useXIntelStore = create<XIntelState>()(
           const existingKey = findReportKey(s.reports, name)
           if (existingKey) {
             const report = s.reports[existingKey]
-            return { reports: { ...s.reports, [existingKey]: { ...report, profile } } }
+            return {
+              reports: {
+                ...s.reports,
+                [existingKey]: {
+                  ...report,
+                  profile,
+                  refreshedAt: { ...report.refreshedAt, profile: new Date().toISOString() },
+                },
+              },
+            }
           }
           return {
             targets: [...s.targets, name],
@@ -119,6 +139,7 @@ export const useXIntelStore = create<XIntelState>()(
                 watch: false,
                 totalCost: 0,
                 createdAt: new Date().toISOString(),
+                refreshedAt: { profile: new Date().toISOString() },
               },
             },
           }

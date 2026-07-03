@@ -3,7 +3,7 @@ import { useModels } from '../../hooks/use-models'
 import { useAuthStore } from '../../stores/auth-store'
 import { useXAuthStore } from '../../stores/x-intel-auth-store'
 import { Select } from '../ui/select'
-import { StatusDot } from '../ui/shared'
+import { ConnectionPill } from '../ui/shared'
 
 const modelTypeMap: Record<string, string> = {
   chat: 'text',
@@ -100,27 +100,20 @@ export function Header({ onOpenApiKey, onOpenXKey, onOpenMobileSidebar }: Props)
       <div className="flex-1" />
 
       {activeTab === 'intel' && (
-        <button
+        <ConnectionPill
+          connected={!!xBearer}
+          connectedLabel="X: Connected"
+          disconnectedLabel="Connect X key"
           onClick={onOpenXKey}
-          className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md border border-white/[0.05] hover:border-white/[0.1] transition-colors"
-        >
-          <div className={`w-1 h-1 rounded-full transition-colors ${xBearer ? 'bg-white/70' : 'bg-white/10'}`} />
-          <span className={xBearer ? 'text-white/45' : 'text-white/20'}>
-            {xBearer ? 'X: Connected' : 'X Key'}
-          </span>
-        </button>
+        />
       )}
 
-      <button
+      <ConnectionPill
+        connected={!!apiKey}
+        connectedLabel="Connected"
+        disconnectedLabel="Connect API key"
         onClick={onOpenApiKey}
-        aria-label={apiKey ? 'API key connected, manage' : 'Connect API key'}
-        className="flex items-center gap-2 text-[13px] px-2.5 py-1.5 rounded-md border border-white/[0.08] hover:border-white/[0.2] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
-      >
-        <StatusDot tone={apiKey ? 'teal' : 'slate'} pulsing={!apiKey} />
-        <span className={apiKey ? 'text-white/85 font-medium' : 'text-white/65'}>
-          {apiKey ? 'Connected' : 'Connect API key'}
-        </span>
-      </button>
+      />
     </header>
   )
 }

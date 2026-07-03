@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { useXIntelStore } from '../../stores/x-intel-store'
+import { useXAuthStore } from '../../stores/x-intel-auth-store'
 import { useModels } from '../../hooks/use-models'
 import { synthesizeProfile } from '../../lib/x-intel/synthesize'
+import { refreshProfile } from '../../lib/x-intel/orchestrate'
+import { SectionRefresh, SectionEmpty } from './section-actions'
 import { formatTokens, cn } from '../../lib/utils'
 
 export function ProfileCard() {
@@ -9,10 +12,26 @@ export function ProfileCard() {
   const report = useXIntelStore((s) => (s.activeTarget ? s.reports[s.activeTarget] : undefined))
   const updateReport = useXIntelStore((s) => s.updateReport)
   const setActiveSubTab = useXIntelStore((s) => s.setActiveSubTab)
+  const bearerToken = useXAuthStore((s) => s.bearerToken)
   const { data: models } = useModels('text')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
+
+  const runRefresh = async () => {
+    if (!activeTarget) return
+    setRefreshing(true)
+    setRefreshError(null)
+    try {
+      await refreshProfile(activeTarget)
+    } catch (e) {
+      setRefreshError(e instanceof Error ? e.message : 'Refresh failed')
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   if (!activeTarget || !report) {
     return <div className="flex items-center justify-center h-full text-[12px] text-white/15">No target selected</div>
@@ -42,7 +61,17 @@ export function ProfileCard() {
   }
 
   if (!profile) {
-    return <div className="flex items-center justify-center h-full text-[12px] text-white/15">No profile gathered yet</div>
+    return (
+      <SectionEmpty
+        title="No profile gathered yet"
+        hint={bearerToken ? `Fetch @${activeTarget}'s profile — one cheap user lookup.` : 'Set your X key first (header → X Key).'}
+        actionLabel="Refresh profile"
+        onAction={runRefresh}
+        busy={refreshing}
+        disabled={!bearerToken}
+        error={refreshError}
+      />
+    )
   }
 
   return (
@@ -74,6 +103,13 @@ export function ProfileCard() {
           </div>
           {profile.bio && <p className="text-[12px] text-white/50 mt-1.5">{profile.bio}</p>}
         </div>
+        <SectionRefresh
+          onClick={runRefresh}
+          busy={refreshing}
+          disabled={!bearerToken}
+          lastGatheredIso={report.refreshedAt?.profile ?? profile.gatheredAt}
+          error={refreshError}
+        />
       </div>
 
       {/* Metrics row */}

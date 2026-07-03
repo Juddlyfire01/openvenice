@@ -199,3 +199,27 @@ export function StatusDot({ tone = 'slate', pulsing }: { tone?: 'emerald' | 'amb
     <span className={cn('inline-block w-1.5 h-1.5 rounded-full', color, pulsing && 'animate-pulse-dot')} />
   )
 }
+
+/**
+ * A header status pill (e.g. "Connected" / "Connect API key"). Single source of
+ * truth for the connection-indicator styling so every key toggle looks identical.
+ */
+export function ConnectionPill({ connected, connectedLabel, disconnectedLabel, onClick }: {
+  connected: boolean
+  connectedLabel: string
+  disconnectedLabel: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={connected ? `${connectedLabel}, manage` : disconnectedLabel}
+      className="flex items-center gap-2 text-[13px] px-2.5 py-1.5 rounded-md border border-white/[0.08] hover:border-white/[0.2] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
+    >
+      <StatusDot tone={connected ? 'teal' : 'slate'} pulsing={!connected} />
+      <span className={connected ? 'text-white/85 font-medium' : 'text-white/65'}>
+        {connected ? connectedLabel : disconnectedLabel}
+      </span>
+    </button>
+  )
+}
