@@ -4,6 +4,7 @@ import { TargetRail } from './target-rail'
 import { ActivityFeed } from './activity-feed'
 import { ProfileCard } from './profile-card'
 import { NetworkGraph } from './network-graph'
+import { DraftWorkspace } from './draft-workspace'
 import { runGather } from '../../lib/x-intel/orchestrate'
 import { cn } from '../../lib/utils'
 
@@ -17,7 +18,6 @@ const SUB_TABS: { id: IntelSubTab; label: string }[] = [
 export function IntelView() {
   const activeSubTab = useXIntelStore((s) => s.activeSubTab)
   const setActiveSubTab = useXIntelStore((s) => s.setActiveSubTab)
-  const activeTarget = useXIntelStore((s) => s.activeTarget)
 
   const ranWatch = useRef(false)
   useEffect(() => {
@@ -49,19 +49,10 @@ export function IntelView() {
           ))}
         </div>
         <div className="flex-1 min-h-0">
-          {activeSubTab === 'profile' ? (
-            <ProfileCard />
-          ) : activeSubTab === 'network' ? (
-            <NetworkGraph />
-          ) : activeSubTab === 'feed' ? (
-            <ActivityFeed />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <span className="text-[12px] text-white/15">
-                {activeTarget ? `${activeSubTab} — coming in later tasks` : 'No target selected'}
-              </span>
-            </div>
-          )}
+          {activeSubTab === 'profile' && <ProfileCard />}
+          {activeSubTab === 'network' && <NetworkGraph />}
+          {activeSubTab === 'feed' && <ActivityFeed />}
+          {activeSubTab === 'draft' && <DraftWorkspace />}
         </div>
       </div>
     </div>
