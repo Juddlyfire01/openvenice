@@ -46,6 +46,11 @@ function canonical(username: string): string {
   return username.trim().replace(/^@/, '')
 }
 
+function findReportKey(reports: Record<string, IntelReport>, username: string): string | undefined {
+  const name = canonical(username).toLowerCase()
+  return Object.keys(reports).find((k) => k.toLowerCase() === name)
+}
+
 export const useXIntelStore = create<XIntelState>()(
   persist(
     (set, get) => ({
@@ -87,13 +92,15 @@ export const useXIntelStore = create<XIntelState>()(
 
       removeTarget: (username) => {
         set((s) => {
+          const key = findReportKey(s.reports, username)
+          if (!key) return s
           const reports = { ...s.reports }
-          delete reports[username]
-          const targets = s.targets.filter((t) => t !== username)
+          delete reports[key]
+          const targets = s.targets.filter((t) => t !== key)
           return {
             targets,
             reports,
-            activeTarget: s.activeTarget === username ? (targets[0] ?? null) : s.activeTarget,
+            activeTarget: s.activeTarget === key ? (targets[0] ?? null) : s.activeTarget,
           }
         })
       },
@@ -103,20 +110,21 @@ export const useXIntelStore = create<XIntelState>()(
 
       updateReport: (username, patch) => {
         set((s) => {
-          const report = s.reports[username]
-          if (!report) return s
-          return { reports: { ...s.reports, [username]: { ...report, ...patch } } }
+          const key = findReportKey(s.reports, username)
+          if (!key) return s
+          const report = s.reports[key]
+          return { reports: { ...s.reports, [key]: { ...report, ...patch } } }
         })
       },
 
       addCost: (username, cost) => {
         set((s) => {
-          const report = s.reports[username]
+          const key = findReportKey(s.reports, username)
+          if (!key) return s  // no-op for non-existent target — don't charge sessionCost either
+          const report = s.reports[key]
           return {
             sessionCost: s.sessionCost + cost,
-            reports: report
-              ? { ...s.reports, [username]: { ...report, totalCost: report.totalCost + cost } }
-              : s.reports,
+            reports: { ...s.reports, [key]: { ...report, totalCost: report.totalCost + cost } },
           }
         })
       },

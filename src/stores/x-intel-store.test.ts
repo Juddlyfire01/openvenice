@@ -55,4 +55,25 @@ describe('useXIntelStore', () => {
     expect(s.sessionCost).toBeCloseTo(0.27)
     expect(s.reports['ErikVoorhees'].totalCost).toBeCloseTo(0.27)
   })
+
+  it('removeTarget is case-insensitive (matches addTarget canonicalization)', () => {
+    useXIntelStore.getState().addTarget('ErikVoorhees')
+    useXIntelStore.getState().removeTarget('erikvoorhees')
+    expect(useXIntelStore.getState().targets).toEqual([])
+    expect(useXIntelStore.getState().activeTarget).toBeNull()
+  })
+
+  it('addCost is a no-op for non-existent target (does not inflate sessionCost)', () => {
+    useXIntelStore.getState().addTarget('ErikVoorhees')
+    useXIntelStore.getState().addCost('NonExistent', 0.5)
+    const s = useXIntelStore.getState()
+    expect(s.sessionCost).toBe(0)  // not inflated
+    expect(s.reports['ErikVoorhees'].totalCost).toBe(0)  // untouched
+  })
+
+  it('updateReport is case-insensitive', () => {
+    useXIntelStore.getState().addTarget('ErikVoorhees')
+    useXIntelStore.getState().updateReport('ERIKVOORHEES', { watch: true })
+    expect(useXIntelStore.getState().reports['ErikVoorhees'].watch).toBe(true)
+  })
 })
