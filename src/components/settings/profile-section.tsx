@@ -7,17 +7,17 @@ export function ProfileSection() {
 
   const initials = profileName.trim()
     .split(/\s+/).filter(Boolean).slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '').join('') || 'OV'
+    .map((w) => w[0]?.toUpperCase() ?? '').join('') || 'A'
 
   return (
     <div className="flex flex-col gap-6 max-w-md">
       <div className="flex items-center gap-4">
-        <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[var(--color-accent-soft)] text-[var(--color-accent)] text-[22px] font-semibold border border-[var(--color-accent)]/30">
+        <div className="flex items-center justify-center w-16 h-16 rounded-full bg-transparent text-[var(--color-text-primary)] text-[22px] font-semibold border border-[var(--color-border-soft)]">
           {initials}
         </div>
         <div className="flex flex-col">
           <span className="text-[15px] font-semibold text-[var(--color-text-primary)]">
-            {profileName.trim() || 'OpenVenice user'}
+            {profileName.trim() || 'Anon'}
           </span>
           <span className="text-[12px] text-[var(--color-text-tertiary)]">Local profile</span>
         </div>
