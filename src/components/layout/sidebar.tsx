@@ -34,6 +34,15 @@ function IntelIcon() {
   return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><circle cx="11" cy="11" r="2.5" /></svg>)
 }
 
+function SettingsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  )
+}
+
 interface NavGroup {
   label: string
   items: Array<{ id: Tab; label: string; Icon: () => React.JSX.Element }>
@@ -114,7 +123,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
     <aside
       aria-label="Primary navigation"
       className={cn(
-        'flex flex-col h-full bg-[#0d0d11] border-r border-white/[0.05] transition-all duration-200 ease-out',
+        'flex flex-col h-full bg-[var(--color-bg-input)] border-r border-[var(--color-border-faint)] transition-all duration-200 ease-out',
         'fixed top-0 left-0 z-40 w-72 h-[100dvh] md:static md:h-full md:w-auto',
         mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         sidebarOpen ? 'md:w-64' : 'md:w-[60px]',
@@ -132,99 +141,106 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
         </button>
       </div>
 
-      <nav aria-label="Sections" className="flex flex-col gap-3 py-3 overflow-y-auto">
-        {navGroups.map((group) => (
-          <div key={group.label} className={cn(expanded ? 'px-2' : 'md:px-1.5 px-2')}>
-            {expanded && (
-              <div className="px-2 pb-1.5 text-[10.5px] uppercase tracking-[0.1em] text-white/30 font-semibold">
-                {group.label}
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <nav aria-label="Sections" className="flex flex-col gap-3 py-3 overflow-y-auto shrink-0">
+          {navGroups.map((group) => (
+            <div key={group.label} className={cn(expanded ? 'px-2' : 'md:px-1.5 px-2')}>
+              {expanded && (
+                <div className="px-2 pb-1.5 text-[10.5px] uppercase tracking-[0.1em] text-white/30 font-semibold">
+                  {group.label}
+                </div>
+              )}
+              <div className="flex flex-col gap-px">
+                {group.items.map(({ id, label, Icon }) => {
+                  const isActive = activeTab === id
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => { setActiveTab(id); onMobileClose?.() }}
+                      aria-current={isActive ? 'page' : undefined}
+                      title={!expanded ? label : undefined}
+                      className={cn(
+                        'relative flex items-center gap-2.5 rounded-lg text-[14px] transition-all duration-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2',
+                        expanded ? 'px-2.5 py-2' : 'md:px-0 md:py-2 md:justify-center px-2.5 py-2',
+                        isActive
+                          ? 'bg-white/[0.06] text-white'
+                          : 'text-white/55 hover:text-white hover:bg-white/[0.03]',
+                      )}
+                    >
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-[var(--color-accent)]" />
+                      )}
+                      <Icon />
+                      {expanded && <span className="font-medium">{label}</span>}
+                    </button>
+                  )
+                })}
               </div>
-            )}
-            <div className="flex flex-col gap-px">
-              {group.items.map(({ id, label, Icon }) => {
-                const isActive = activeTab === id
-                return (
-                  <button
-                    key={id}
-                    onClick={() => { setActiveTab(id); onMobileClose?.() }}
-                    aria-current={isActive ? 'page' : undefined}
-                    title={!expanded ? label : undefined}
-                    className={cn(
-                      'relative flex items-center gap-2.5 rounded-lg text-[14px] transition-all duration-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2',
-                      expanded ? 'px-2.5 py-2' : 'md:px-0 md:py-2 md:justify-center px-2.5 py-2',
-                      isActive
-                        ? 'bg-white/[0.06] text-white'
-                        : 'text-white/55 hover:text-white hover:bg-white/[0.03]',
-                    )}
-                  >
-                    {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-[var(--color-accent)]" />
-                    )}
-                    <Icon />
-                    {expanded && <span className="font-medium">{label}</span>}
-                  </button>
-                )
-              })}
             </div>
-          </div>
-        ))}
-      </nav>
+          ))}
+        </nav>
 
-      {expanded && activeTab === 'chat' && (
-        <div className="flex flex-col flex-1 min-h-0 mt-1 border-t border-white/[0.04]">
-          <div className="flex items-center justify-between px-3 pt-3 pb-1.5">
-            <span className="text-[10.5px] font-semibold text-white/40 uppercase tracking-[0.1em]">History</span>
-            <button
-              onClick={() => createConversation(selectedModel || 'qwen3-next-80b')}
-              aria-label="New chat"
-              className="text-white/55 hover:text-white transition-colors p-1 rounded-md hover:bg-white/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
-              title="New chat (⌘N)"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-            </button>
-          </div>
-          {conversations.length > 5 && (
-            <div className="px-3 pb-2">
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search…"
-                aria-label="Search conversations"
-                className="w-full bg-white/[0.04] border border-white/[0.06] rounded-md px-2.5 py-1 text-[13px] text-white/85 outline-none focus:border-white/[0.2] placeholder:text-white/30"
-              />
+        {expanded && activeTab === 'chat' && (
+          <div className="flex flex-col flex-1 min-h-0 mt-1 border-t border-white/[0.04]">
+            <div className="flex items-center justify-between px-3 pt-3 pb-1.5">
+              <span className="text-[10.5px] font-semibold text-white/40 uppercase tracking-[0.1em]">History</span>
+              <button
+                onClick={() => createConversation(selectedModel || 'qwen3-next-80b')}
+                aria-label="New chat"
+                className="text-white/55 hover:text-white transition-colors p-1 rounded-md hover:bg-white/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+                title="New chat"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              </button>
             </div>
-          )}
-          <div className="flex-1 overflow-y-auto px-2 pb-3" role="list">
-            {filtered.length === 0 ? (
-              <div className="px-2 py-6 text-[13px] text-white/30 text-center">
-                {search ? 'No matches' : 'No conversations yet'}
-              </div>
-            ) : (
-              filtered.map((conv) => (
-                <ConversationRow
-                  key={conv.id}
-                  conv={conv}
-                  isActive={conv.id === activeConversationId}
-                  onSelect={() => setActiveConversation(conv.id)}
-                  onDelete={() => handleDelete(conv)}
-                  onExport={() => exportConversation(conv)}
+            {conversations.length > 5 && (
+              <div className="px-3 pb-2">
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search…"
+                  aria-label="Search conversations"
+                  className="w-full bg-white/[0.04] border border-white/[0.06] rounded-md px-2.5 py-1 text-[13px] text-white/85 outline-none focus:border-white/[0.2] placeholder:text-white/30"
                 />
-              ))
+              </div>
             )}
+            <div className="flex-1 overflow-y-auto px-2 pb-3" role="list">
+              {filtered.length === 0 ? (
+                <div className="px-2 py-6 text-[13px] text-white/30 text-center">
+                  {search ? 'No matches' : 'No conversations yet'}
+                </div>
+              ) : (
+                filtered.map((conv) => (
+                  <ConversationRow
+                    key={conv.id}
+                    conv={conv}
+                    isActive={conv.id === activeConversationId}
+                    onSelect={() => setActiveConversation(conv.id)}
+                    onDelete={() => handleDelete(conv)}
+                    onExport={() => exportConversation(conv)}
+                  />
+                ))
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {!expanded && <div className="hidden md:block flex-1" />}
-
-      {expanded && (
-        <div className="px-3 py-2.5 border-t border-white/[0.04]">
-          <div className="text-[11px] text-white/35 space-y-0.5">
-            <div className="flex justify-between"><span>New chat</span><kbd className="font-mono text-white/50">⌘N</kbd></div>
-            <div className="flex justify-between"><span>Switch tab</span><kbd className="font-mono text-white/50">⌘1-9</kbd></div>
-          </div>
-        </div>
-      )}
+      <div className="shrink-0 border-t border-[var(--color-border-faint)] px-3 py-2.5">
+        <button
+          type="button"
+          onClick={() => { useSettingsStore.getState().openSettings(); onMobileClose?.() }}
+          aria-label="Open settings"
+          title="Settings"
+          className={cn(
+            'flex items-center rounded-lg text-[14px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-white/[0.03] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2',
+            expanded ? 'gap-2.5 w-full px-2.5 py-2' : 'md:justify-center w-full py-2',
+          )}
+        >
+          <SettingsIcon />
+          {expanded && <span className="font-medium">Settings</span>}
+        </button>
+      </div>
     </aside>
   )
 }

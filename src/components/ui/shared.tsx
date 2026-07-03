@@ -4,10 +4,10 @@ import { Spinner } from './spinner'
 export function Label({ children, htmlFor, hint }: { children: React.ReactNode; htmlFor?: string; hint?: string }) {
   return (
     <div className="flex items-baseline justify-between mb-1.5">
-      <label htmlFor={htmlFor} className="block text-[11.5px] font-semibold text-white/55 uppercase tracking-[0.08em]">
+      <label htmlFor={htmlFor} className="block text-[11.5px] font-semibold text-[var(--color-text-secondary)] uppercase tracking-[0.08em]">
         {children}
       </label>
-      {hint && <span className="text-[11px] text-white/35">{hint}</span>}
+      {hint && <span className="text-[11px] text-[var(--color-text-tertiary)]">{hint}</span>}
     </div>
   )
 }
@@ -30,7 +30,7 @@ export function TextArea({ value, onChange, placeholder, rows = 3, ariaLabel, ma
       aria-label={ariaLabel ?? placeholder}
       maxLength={maxLength}
       autoFocus={autoFocus}
-      className="w-full bg-[#0d0d11] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[15px] text-white/90 outline-none focus:border-white/[0.22] transition-colors resize-none placeholder:text-white/25 leading-relaxed"
+      className="w-full bg-[var(--color-bg-input)] border border-[var(--color-border-soft)] rounded-lg px-3 py-2.5 text-[15px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)] transition-colors resize-none placeholder:text-[var(--color-text-placeholder)] leading-relaxed"
     />
   )
 }
@@ -55,8 +55,8 @@ export function PrimaryButton({ onClick, disabled, loading, children, ariaLabel,
         'w-full rounded-lg font-medium transition-all duration-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2',
         sizing,
         !disabled && !loading
-          ? 'bg-white text-black hover:bg-white/90 active:scale-[0.99] shadow-sm'
-          : 'bg-white/[0.06] text-white/30 cursor-not-allowed',
+          ? 'bg-[var(--color-btn-primary-bg)] text-[var(--color-btn-primary-fg)] hover:opacity-90 active:scale-[0.99] shadow-sm'
+          : 'bg-[var(--color-border-faint)] text-[var(--color-text-tertiary)] cursor-not-allowed',
       )}
     >
       {loading ? (
@@ -100,8 +100,8 @@ export function PillGroup({ options, value, onChange, ariaLabel }: {
           className={cn(
             'text-[13px] font-medium px-2.5 py-1 rounded-md border transition-all duration-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--color-accent)]',
             o.value === value
-              ? 'border-white/15 bg-white/[0.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
-              : 'border-white/[0.06] text-white/55 hover:text-white/85 hover:border-white/[0.14] hover:bg-white/[0.02]',
+              ? 'border-[var(--color-border-strong)] bg-[var(--color-accent-soft)] text-[var(--color-text-primary)] shadow-none'
+              : 'border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] hover:bg-white/[0.02]',
           )}
         >
           {o.label}
@@ -123,7 +123,7 @@ export function ErrorText({ children }: { children: React.ReactNode }) {
 }
 
 export function EmptyState({ children }: { children: React.ReactNode }) {
-  return <div className="flex items-center justify-center flex-1 text-white/30 text-[14px]">{children}</div>
+  return <div className="flex items-center justify-center flex-1 text-[var(--color-text-tertiary)] text-[14px]">{children}</div>
 }
 
 export function ExamplePrompts({ items, onPick, title = 'Try one of these' }: {
@@ -133,17 +133,17 @@ export function ExamplePrompts({ items, onPick, title = 'Try one of these' }: {
 }) {
   return (
     <div className="w-full max-w-md flex flex-col gap-2.5">
-      <div className="text-[11px] uppercase tracking-[0.08em] text-white/40 font-semibold">{title}</div>
+      <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)] font-semibold">{title}</div>
       <div className="flex flex-col gap-2">
         {items.map((text) => (
           <button
             key={text}
             type="button"
             onClick={() => onPick(text)}
-            className="group text-left px-3.5 py-3 rounded-xl border border-white/[0.06] bg-white/[0.015] hover:border-white/[0.16] hover:bg-white/[0.04] transition-all text-[13.5px] text-white/70 hover:text-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
+            className="group text-left px-3.5 py-3 rounded-xl border border-[var(--color-border-faint)] bg-white/[0.015] hover:border-[var(--color-border-strong)] hover:bg-white/[0.04] transition-all text-[13.5px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
           >
             <span className="flex items-start gap-2">
-              <span className="text-white/25 group-hover:text-[var(--color-accent)] transition-colors mt-px">→</span>
+              <span className="text-[var(--color-text-quaternary)] group-hover:text-[var(--color-accent)] transition-colors mt-px">→</span>
               <span className="leading-relaxed">{text}</span>
             </span>
           </button>
@@ -155,7 +155,7 @@ export function ExamplePrompts({ items, onPick, title = 'Try one of these' }: {
 
 export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('bg-[#111114] border border-white/[0.06] rounded-xl', className)}>
+    <div className={cn('bg-[var(--color-bg-raised)] border border-[var(--color-border-faint)] rounded-xl', className)}>
       {children}
     </div>
   )
@@ -164,7 +164,7 @@ export function Card({ children, className }: { children: React.ReactNode; class
 export function SectionHeading({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between mb-2.5">
-      <h3 className="text-[11px] uppercase tracking-[0.08em] text-white/40 font-semibold">{children}</h3>
+      <h3 className="text-[11px] uppercase tracking-[0.08em] text-[var(--color-text-tertiary)] font-semibold">{children}</h3>
       {action}
     </div>
   )
@@ -214,10 +214,10 @@ export function ConnectionPill({ connected, connectedLabel, disconnectedLabel, o
     <button
       onClick={onClick}
       aria-label={connected ? `${connectedLabel}, manage` : disconnectedLabel}
-      className="flex items-center gap-2 text-[13px] px-2.5 py-1.5 rounded-md border border-white/[0.08] hover:border-white/[0.2] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
+      className="flex items-center gap-2 text-[13px] px-2.5 py-1.5 rounded-md border border-[var(--color-border-soft)] hover:border-[var(--color-border-strong)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
     >
       <StatusDot tone={connected ? 'teal' : 'slate'} pulsing={!connected} />
-      <span className={connected ? 'text-white/85 font-medium' : 'text-white/65'}>
+      <span className={connected ? 'text-[var(--color-text-primary)] font-medium' : 'text-[var(--color-text-secondary)]'}>
         {connected ? connectedLabel : disconnectedLabel}
       </span>
     </button>

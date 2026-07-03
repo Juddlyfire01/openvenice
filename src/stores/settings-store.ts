@@ -2,7 +2,11 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { createSafeStorage } from '../lib/safe-storage'
 
-export type Tab = 'chat' | 'image' | 'audio' | 'music' | 'video' | 'embeddings' | 'workflows' | 'playground' | 'intel'
+export type Tab = 'chat' | 'image' | 'audio' | 'music' | 'video' | 'embeddings' | 'workflows' | 'playground' | 'intel' | 'settings'
+export type Theme = 'dark' | 'venice' | 'grey' | 'light'
+export type Zoom = 90 | 100 | 110 | 125
+export type FontScale = 'sm' | 'md' | 'lg'
+export type Density = 'compact' | 'comfortable'
 
 interface SettingsState {
   activeTab: Tab
@@ -14,7 +18,26 @@ interface SettingsState {
   setSelectedModel: (tab: string, modelId: string) => void
   playgroundAgentModel: string
   setPlaygroundAgentModel: (modelId: string) => void
+
+  theme: Theme
+  setTheme: (t: Theme) => void
+  zoom: Zoom
+  setZoom: (z: Zoom) => void
+  fontScale: FontScale
+  setFontScale: (f: FontScale) => void
+  reduceMotion: boolean
+  toggleReduceMotion: () => void
+  density: Density
+  setDensity: (d: Density) => void
+  profileName: string
+  setProfileName: (name: string) => void
+
+  lastNonSettingsTab: Tab
+  openSettings: () => void
+  closeSettings: () => void
 }
+
+const NON_SETTINGS_DEFAULT: Tab = 'chat'
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -29,11 +52,47 @@ export const useSettingsStore = create<SettingsState>()(
         set((s) => ({ selectedModels: { ...s.selectedModels, [tab]: modelId } })),
       playgroundAgentModel: '',
       setPlaygroundAgentModel: (modelId) => set({ playgroundAgentModel: modelId }),
+
+      theme: 'venice',
+      setTheme: (t) => set({ theme: t }),
+      zoom: 100,
+      setZoom: (z) => set({ zoom: z }),
+      fontScale: 'md',
+      setFontScale: (f) => set({ fontScale: f }),
+      reduceMotion: false,
+      toggleReduceMotion: () => set((s) => ({ reduceMotion: !s.reduceMotion })),
+      density: 'comfortable',
+      setDensity: (d) => set({ density: d }),
+      profileName: '',
+      setProfileName: (name) => set({ profileName: name }),
+
+      lastNonSettingsTab: NON_SETTINGS_DEFAULT,
+      openSettings: () =>
+        set((s) => ({
+          lastNonSettingsTab: s.activeTab === 'settings' ? s.lastNonSettingsTab : s.activeTab,
+          activeTab: 'settings',
+        })),
+      closeSettings: () =>
+        set((s) => ({ activeTab: s.lastNonSettingsTab ?? NON_SETTINGS_DEFAULT })),
     }),
     {
       name: 'venice-settings',
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => createSafeStorage()),
+      migrate: (persisted) => {
+        // v1 -> v2: appearance fields are additive; defaults fill in on read.
+        const s = (persisted ?? {}) as Partial<SettingsState>
+        return {
+          ...s,
+          theme: s.theme ?? 'venice',
+          zoom: s.zoom ?? 100,
+          fontScale: s.fontScale ?? 'md',
+          reduceMotion: s.reduceMotion ?? false,
+          density: s.density ?? 'comfortable',
+          profileName: s.profileName ?? '',
+          lastNonSettingsTab: s.lastNonSettingsTab ?? NON_SETTINGS_DEFAULT,
+        }
+      },
     },
   ),
 )

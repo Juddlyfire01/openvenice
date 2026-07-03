@@ -142,7 +142,7 @@ export function ProfileCard() {
 
       {/* Settings popover (gear) */}
       {settingsOpen && (
-        <div className="border border-white/[0.06] rounded-lg p-3 bg-[#0e0e0e] space-y-3">
+        <div className="border border-[var(--color-border-faint)] rounded-lg p-3 bg-[var(--color-bg-raised)] space-y-3">
           <label className="block text-[11px] text-white/40">
             Context cap: <b className="text-white/70 font-mono">{synthesisSettings.contextCap}</b> posts
             <input
@@ -166,7 +166,7 @@ export function ProfileCard() {
             <select
               value={synthesisSettings.model}
               onChange={(e) => setSetting({ model: e.target.value })}
-              className="w-full mt-1 bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2 py-1.5 text-[11px] text-white/70 outline-none"
+              className="w-full mt-1 bg-[var(--color-bg-input)] border border-[var(--color-border-soft)] rounded-md px-2 py-1.5 text-[11px] text-[var(--color-text-secondary)] outline-none"
             >
               {(models ?? []).map((m) => (
                 <option key={m.id} value={m.id}>{m.model_spec?.name || m.id}</option>
@@ -216,7 +216,7 @@ export function ProfileCard() {
             <h3 className="text-[11px] font-medium text-white/30 mb-1">Flagship post</h3>
             <button
               onClick={() => setActiveSubTab('feed')}
-              className="text-left w-full border border-white/[0.05] rounded-lg p-2.5 bg-[#0e0e0e] hover:border-white/[0.12] transition-colors"
+              className="text-left w-full border border-[var(--color-border-faint)] rounded-lg p-2.5 bg-[var(--color-bg-raised)] hover:border-[var(--color-border-strong)] transition-colors"
             >
               <p className="text-[12px] text-white/60">{synthesis.flagshipPost.excerpt}</p>
               <p className="text-[10px] text-white/20 font-mono mt-1">

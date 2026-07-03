@@ -6,11 +6,11 @@ export function VeniceLogo({ className, size = 24 }: { className?: string; size?
       viewBox="0 0 32 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn('shrink-0', className)}
+      className={cn('shrink-0 text-[var(--color-text-primary)]', className)}
       style={{ width: size, height: size }}
     >
       {/* Two crossed skeleton keys with open book — Venice coat of arms */}
-      <g fill="white">
+      <g fill="currentColor">
         {/* Left key shaft (top-left to bottom-right) */}
         <rect x="6.2" y="7.5" width="1.6" height="18" rx="0.8" transform="rotate(-42 6.2 7.5)" />
         {/* Right key shaft (top-right to bottom-left) */}
@@ -44,7 +44,7 @@ export function VeniceLogo({ className, size = 24 }: { className?: string; size?
 
 export function VeniceWordmark({ className }: { className?: string }) {
   return (
-    <span className={cn('font-semibold tracking-[-0.02em] text-white/90', className)}>
+    <span className={cn('font-semibold tracking-[-0.02em] text-[var(--color-text-primary)]', className)}>
       OpenVenice
     </span>
   )

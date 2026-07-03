@@ -24,6 +24,7 @@ const tabLabels: Record<string, string> = {
   workflows: 'Workflows',
   playground: 'Playground',
   intel: 'Intel',
+  settings: 'Settings',
 }
 
 const tabSubtitles: Record<string, string> = {
@@ -36,9 +37,10 @@ const tabSubtitles: Record<string, string> = {
   workflows: 'Chain models visually',
   playground: 'Build workflows by chatting',
   intel: 'X intelligence gathering',
+  settings: 'Preferences and appearance',
 }
 
-const noModelSelector = new Set(['video', 'workflows', 'playground', 'intel'])
+const noModelSelector = new Set(['video', 'workflows', 'playground', 'intel', 'settings'])
 
 interface Props {
   onOpenApiKey: () => void
@@ -57,11 +59,11 @@ export function Header({ onOpenApiKey, onOpenXKey, onOpenMobileSidebar }: Props)
   const modelOptions = hasOwnSelector ? [] : (models?.map((m) => ({ value: m.id, label: m.model_spec?.name || m.id })) ?? [])
 
   return (
-    <header className="flex items-center gap-3 h-14 px-3 border-b border-white/[0.05] bg-[#0a0a0c] shrink-0">
+    <header className="flex items-center gap-3 h-14 px-3 border-b border-[var(--color-border-faint)] bg-[var(--color-bg-base)] shrink-0">
       <button
         onClick={() => onOpenMobileSidebar?.()}
         aria-label="Open menu"
-        className="md:hidden text-white/55 hover:text-white transition-colors p-1.5 -ml-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+        className="md:hidden text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors p-1.5 -ml-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
           <line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" />
@@ -71,7 +73,7 @@ export function Header({ onOpenApiKey, onOpenXKey, onOpenMobileSidebar }: Props)
       <button
         onClick={toggleSidebar}
         aria-label="Toggle sidebar"
-        className="hidden md:block text-white/55 hover:text-white transition-colors p-1.5 -ml-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+        className="hidden md:block text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors p-1.5 -ml-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
           <path d="M3 4h18M3 12h12M3 20h18" />
@@ -79,13 +81,13 @@ export function Header({ onOpenApiKey, onOpenXKey, onOpenMobileSidebar }: Props)
       </button>
 
       <div className="flex flex-col min-w-0">
-        <span className="text-[14px] font-semibold text-white/95 leading-none">{tabLabels[activeTab]}</span>
-        <span className="text-[11px] text-white/40 mt-0.5 leading-none truncate hidden sm:block">{tabSubtitles[activeTab]}</span>
+        <span className="text-[14px] font-semibold text-[var(--color-text-primary)] leading-none">{tabLabels[activeTab]}</span>
+        <span className="text-[11px] text-[var(--color-text-tertiary)] mt-0.5 leading-none truncate hidden sm:block">{tabSubtitles[activeTab]}</span>
       </div>
 
       {!hasOwnSelector && (
         <>
-          <div className="w-px h-5 bg-white/[0.07] hidden sm:block" aria-hidden />
+          <div className="w-px h-5 bg-[var(--color-border-soft)] hidden sm:block" aria-hidden />
           <Select
             value={currentModel}
             onChange={(v) => setSelectedModel(activeTab, v)}

@@ -61,7 +61,7 @@ export function DraftWorkspace() {
           onChange={(e) => setInstructions(e.target.value)}
           placeholder={`Instructions — e.g. "Draft a supportive reply to @${activeTarget}'s latest post about AI, mention our open-source work, keep it under 200 chars"`}
           rows={3}
-          className="w-full bg-[#0e0e0e] border border-white/[0.06] rounded-lg px-3 py-2 text-[12px] text-white/70 outline-none focus:border-white/[0.12] transition-colors placeholder:text-white/15 resize-none"
+          className="w-full bg-[var(--color-bg-input)] border border-[var(--color-border-faint)] rounded-lg px-3 py-2 text-[12px] text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-border-strong)] transition-colors placeholder:text-[var(--color-text-placeholder)] resize-none"
         />
         <div className="flex items-center gap-2 mt-2">
           <button
@@ -80,7 +80,7 @@ export function DraftWorkspace() {
           <p className="text-[11px] text-white/15">No drafts yet. Posting is out of scope — copy drafts to X manually.</p>
         ) : (
           report.drafts.map((d) => (
-            <div key={d.id} className="border border-white/[0.05] rounded-lg p-3 bg-[#0e0e0e]">
+            <div key={d.id} className="border border-[var(--color-border-faint)] rounded-lg p-3 bg-[var(--color-bg-raised)]">
               <textarea
                 value={d.text}
                 onChange={(e) => editDraft(d.id, e.target.value)}

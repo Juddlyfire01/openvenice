@@ -39,7 +39,7 @@ export function XCredentialsDialog({ open, onClose }: { open: boolean; onClose: 
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
-        className="relative bg-[#0e0e0e] border border-white/[0.08] rounded-xl p-6 w-full max-w-sm mx-4 animate-scale-in"
+        className="relative bg-[var(--color-bg-overlay)] border border-[var(--color-border-soft)] rounded-xl p-6 w-full max-w-sm mx-4 animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-6">
@@ -54,7 +54,7 @@ export function XCredentialsDialog({ open, onClose }: { open: boolean; onClose: 
           value={value}
           onChange={(e) => { setValue(e.target.value); if (error) setError(null) }}
           placeholder="Bearer token (AAAA...)"
-          className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-white/[0.15] transition-colors font-mono placeholder:text-white/10"
+          className="w-full bg-[var(--color-bg-input)] border border-[var(--color-border-soft)] rounded-lg px-3.5 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)] transition-colors font-mono placeholder:text-[var(--color-text-placeholder)]"
           autoFocus
           onKeyDown={(e) => {
             if (e.key === 'Enter' && value.trim()) handleConnect()

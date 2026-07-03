@@ -44,7 +44,7 @@ export function TargetRail() {
   }
 
   return (
-    <div className="w-52 shrink-0 border-r border-white/[0.06] bg-[#0a0a0a] flex flex-col">
+    <div className="w-52 shrink-0 border-r border-[var(--color-border-faint)] bg-[var(--color-bg-base)] flex flex-col">
       <div className="p-2">
         <input
           value={input}
@@ -52,16 +52,16 @@ export function TargetRail() {
           onKeyDown={(e) => { if (e.key === 'Enter') handleAdd() }}
           placeholder={bearerToken ? '+ Add target (@username)' : 'Set X Key first'}
           disabled={!bearerToken}
-          className="w-full bg-[#0e0e0e] border border-white/[0.06] rounded-md px-2 py-1.5 text-[11px] text-white outline-none focus:border-white/[0.12] transition-colors placeholder:text-white/15 disabled:opacity-40"
+          className="w-full bg-[var(--color-bg-input)] border border-[var(--color-border-faint)] rounded-md px-2 py-1.5 text-[11px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-strong)] transition-colors placeholder:text-[var(--color-text-placeholder)] disabled:cursor-not-allowed disabled:text-[var(--color-text-tertiary)]"
         />
         {error && <p className="text-[10px] text-red-400/70 mt-1 px-0.5">{error}</p>}
       </div>
 
       <div className="flex-1 overflow-y-auto px-1.5 pb-2">
         {targets.length === 0 ? (
-          <div className="px-2 py-5 text-[11px] text-white/10 text-center">
+          <div className="px-2 py-5 text-[11px] text-[var(--color-text-tertiary)] text-center">
             Add a target to start gathering intel
-            <div className="mt-2 text-white/8">e.g. ErikVoorhees · venice_ai</div>
+            <div className="mt-2 text-[var(--color-text-quaternary)]">e.g. ErikVoorhees · venice_ai</div>
           </div>
         ) : (
           targets.map((t) => {

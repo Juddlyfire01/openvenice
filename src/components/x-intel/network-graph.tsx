@@ -8,6 +8,10 @@ import { SectionRefresh, SectionEmpty } from './section-actions'
 import type { Edge } from '../../lib/x-intel/types'
 import { cn } from '../../lib/utils'
 
+function readToken(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#111114'
+}
+
 const KIND_COLORS: Record<Edge['kind'], string> = {
   mention: '#60a5fa',
   reply: '#34d399',
@@ -71,7 +75,7 @@ export function NetworkGraph() {
         position: { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius },
         data: { label: e.targetUsername ? `@${e.targetUsername}` : `unknown (${e.target.slice(0, 12)}…)` },
         style: {
-          background: '#0e0e0e', color: 'rgba(255,255,255,0.6)', fontSize: size,
+          background: readToken('--color-bg-raised'), color: readToken('--color-text-secondary'), fontSize: size,
           borderRadius: 999, padding: '4px 10px', border: `1px solid ${KIND_COLORS[e.kind]}55`,
         },
       })
@@ -156,7 +160,7 @@ export function NetworkGraph() {
           <input
             type="number" min={1} value={minWeight}
             onChange={(e) => setMinWeight(Math.max(1, Number(e.target.value)))}
-            className="w-10 bg-[#0e0e0e] border border-white/[0.08] rounded px-1 py-px text-white/60 outline-none"
+            className="w-10 bg-[var(--color-bg-input)] border border-[var(--color-border-soft)] rounded px-1 py-px text-[var(--color-text-secondary)] outline-none"
           />
         </label>
         <div className="flex-1" />

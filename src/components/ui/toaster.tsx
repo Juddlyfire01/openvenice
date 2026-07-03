@@ -2,7 +2,7 @@ import { useToastStore, type Toast } from '../../stores/toast-store'
 import { cn } from '../../lib/utils'
 
 const VARIANT_STYLES: Record<Toast['variant'], string> = {
-  info: 'border-white/[0.08] bg-[#111]',
+  info: 'border-[var(--color-border-soft)] bg-[var(--color-bg-overlay)]',
   success: 'border-green-500/30 bg-green-500/[0.06]',
   error: 'border-red-500/30 bg-red-500/[0.06]',
 }

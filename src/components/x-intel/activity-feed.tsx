@@ -94,7 +94,7 @@ export function ActivityFeed() {
           <div className="py-8 text-center text-[11px] text-white/10">No posts gathered yet — re-gather from the target rail</div>
         ) : (
           posts.map((p) => (
-            <div key={p.id} id={`post-${p.id}`} className="border border-white/[0.05] rounded-lg p-3 bg-[#0e0e0e]">
+            <div key={p.id} id={`post-${p.id}`} className="border border-[var(--color-border-faint)] rounded-lg p-3 bg-[var(--color-bg-raised)]">
               <div className="flex items-center gap-2 text-[10px] text-white/20 mb-1.5">
                 <span className={cn(
                   'px-1.5 py-px rounded-full font-medium',

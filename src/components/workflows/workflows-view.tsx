@@ -274,7 +274,7 @@ function WorkflowCanvas() {
   return (
     <div className="flex h-full">
       {/* Toolbar */}
-      <div className="w-56 border-r border-white/[0.06] bg-[#0a0a0a] flex flex-col shrink-0">
+      <div className="w-56 border-r border-white/[0.06] bg-[var(--color-bg-base)] flex flex-col shrink-0">
         <div className="p-3 border-b border-white/[0.06]">
           <span className="text-[13px] font-medium text-white/15 uppercase tracking-[0.08em]">Add Node</span>
         </div>
@@ -338,7 +338,7 @@ function WorkflowCanvas() {
           <MiniMap
             nodeColor="rgba(255,255,255,0.1)"
             maskColor="rgba(0,0,0,0.8)"
-            className="!bg-[#0a0a0a] !border-white/[0.06]"
+            className="!bg-[var(--color-bg-base)] !border-[var(--color-border-faint)]"
           />
         </ReactFlow>
       </div>
@@ -363,7 +363,7 @@ export function WorkflowsView() {
   if (activeWorkflowId && workflows.find((w) => w.id === activeWorkflowId)) {
     return (
       <div className="h-full flex flex-col">
-        <div className="flex items-center gap-2.5 px-3 py-1.5 border-b border-white/[0.06] bg-[#0a0a0a] shrink-0">
+        <div className="flex items-center gap-2.5 px-3 py-1.5 border-b border-white/[0.06] bg-[var(--color-bg-base)] shrink-0">
           <button
             onClick={() => setActiveWorkflow(null)}
             className="text-[13px] text-white/25 hover:text-white/50 transition-colors flex items-center gap-1"

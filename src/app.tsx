@@ -14,6 +14,8 @@ import { VideoView } from './components/video/video-view'
 import { EmbeddingsView } from './components/embeddings/embeddings-view'
 import { ErrorBoundary } from './components/ui/error-boundary'
 import { Toaster } from './components/ui/toaster'
+import { SettingsView } from './components/settings/settings-view'
+import { useApplyAppearance } from './hooks/use-apply-appearance'
 
 const LazyWorkflowsView = lazy(() => import('./components/workflows/workflows-view').then((m) => ({ default: m.WorkflowsView })))
 function WorkflowsView() {
@@ -40,6 +42,7 @@ const views = {
   workflows: WorkflowsView,
   playground: PlaygroundView,
   intel: IntelView,
+  settings: SettingsView,
 } as const
 
 const TAB_ORDER: Tab[] = ['chat', 'image', 'audio', 'music', 'video', 'embeddings', 'workflows', 'playground', 'intel']
@@ -78,6 +81,8 @@ export function App() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [setActiveTab])
+
+  useApplyAppearance()
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden">

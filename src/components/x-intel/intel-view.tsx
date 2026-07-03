@@ -41,7 +41,7 @@ export function IntelView() {
               onClick={() => setActiveSubTab(id)}
               className={cn(
                 'text-[11px] font-medium px-2.5 py-[3px] rounded-full transition-all duration-150',
-                activeSubTab === id ? 'bg-white text-black' : 'bg-white/[0.03] text-white/20 hover:text-white/40 hover:bg-white/[0.05]',
+                activeSubTab === id ? 'bg-[var(--color-accent-soft)] text-[var(--color-text-primary)] border border-[var(--color-accent)]/25' : 'bg-white/[0.03] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] hover:bg-white/[0.05]',
               )}
             >
               {label}
