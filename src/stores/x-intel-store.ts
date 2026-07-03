@@ -27,6 +27,7 @@ interface XIntelState {
   defaultSynthesisSettings: SynthesisSettings
 
   addTarget: (username: string) => void
+  seedTarget: (profile: Profile) => void
   removeTarget: (username: string) => void
   setActiveTarget: (username: string | null) => void
   setActiveSubTab: (tab: IntelSubTab) => void
@@ -88,6 +89,40 @@ export const useXIntelStore = create<XIntelState>()(
             },
           },
         }))
+      },
+
+      // Seed a target from an already-fetched profile (e.g. the token-validation
+      // lookup) without spending another request. If the target already exists,
+      // only its profile is refreshed — posts, edges, drafts and cost are kept.
+      seedTarget: (profile) => {
+        const name = canonical(profile.username)
+        if (!name) return
+        set((s) => {
+          const existingKey = findReportKey(s.reports, name)
+          if (existingKey) {
+            const report = s.reports[existingKey]
+            return { reports: { ...s.reports, [existingKey]: { ...report, profile } } }
+          }
+          return {
+            targets: [...s.targets, name],
+            activeTarget: s.activeTarget ?? name,
+            reports: {
+              ...s.reports,
+              [name]: {
+                username: name,
+                profile,
+                posts: [],
+                edges: [],
+                synthesis: null,
+                synthesisSettings: { ...s.defaultSynthesisSettings },
+                drafts: [],
+                watch: false,
+                totalCost: 0,
+                createdAt: new Date().toISOString(),
+              },
+            },
+          }
+        })
       },
 
       removeTarget: (username) => {

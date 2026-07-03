@@ -22,3 +22,8 @@ export const USER_EXPANSIONS = ['pinned_tweet_id'] as const
 export const COST_PER_POST = 0.005
 export const COST_PER_USER = 0.01
 export const COST_PER_LIKE = 0.001
+
+// Default target seeded on first successful token connect. The validation
+// lookup targets this account, so validating the token also fetches its
+// profile in the same request (no extra cost).
+export const DEFAULT_TARGET = 'AskVenice'
