@@ -1,6 +1,7 @@
 import { useSettingsStore } from '../../stores/settings-store'
 import { useModels } from '../../hooks/use-models'
 import { useAuthStore } from '../../stores/auth-store'
+import { useXAuthStore } from '../../stores/x-intel-auth-store'
 import { Select } from '../ui/select'
 import { StatusDot } from '../ui/shared'
 
@@ -41,12 +42,14 @@ const noModelSelector = new Set(['video', 'workflows', 'playground', 'intel'])
 
 interface Props {
   onOpenApiKey: () => void
+  onOpenXKey: () => void
   onOpenMobileSidebar?: () => void
 }
 
-export function Header({ onOpenApiKey, onOpenMobileSidebar }: Props) {
+export function Header({ onOpenApiKey, onOpenXKey, onOpenMobileSidebar }: Props) {
   const { activeTab, selectedModels, setSelectedModel, toggleSidebar } = useSettingsStore()
   const apiKey = useAuthStore((s) => s.apiKey)
+  const xBearer = useXAuthStore((s) => s.bearerToken)
   const hasOwnSelector = noModelSelector.has(activeTab)
   const modelType = modelTypeMap[activeTab] || 'text'
   const { data: models } = useModels(hasOwnSelector ? undefined : modelType)
@@ -95,6 +98,18 @@ export function Header({ onOpenApiKey, onOpenMobileSidebar }: Props) {
       )}
 
       <div className="flex-1" />
+
+      {activeTab === 'intel' && (
+        <button
+          onClick={onOpenXKey}
+          className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md border border-white/[0.05] hover:border-white/[0.1] transition-colors"
+        >
+          <div className={`w-1 h-1 rounded-full transition-colors ${xBearer ? 'bg-white/70' : 'bg-white/10'}`} />
+          <span className={xBearer ? 'text-white/45' : 'text-white/20'}>
+            {xBearer ? 'X: Connected' : 'X Key'}
+          </span>
+        </button>
+      )}
 
       <button
         onClick={onOpenApiKey}
