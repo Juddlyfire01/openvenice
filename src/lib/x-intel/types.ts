@@ -55,6 +55,138 @@ export interface SynthesisSettings {
   model: string         // default 'venice-uncensored-1-2'
 }
 
+// ——— Comprehensive Report Ledger ———
+//
+// A report is a two-layer artifact: `ReportAnalytics` is computed deterministically
+// in code (exact, repeatable, never hallucinated) and `ReportNarrative` is the LLM's
+// interpretation grounded in those computed facts. Both are frozen into an immutable
+// `IntelReportSnapshot` so historical reports never drift when post metrics update.
+
+export type FollowRatioLabel = 'broadcast' | 'conversational' | 'networker'
+export type CadencePattern = 'burst' | 'steady'
+export type CadenceVariance = 'high' | 'medium' | 'low'
+export type PostKind = Post['kind']
+
+/** Summary stats for a single engagement metric across the analyzed post set. */
+export interface MetricStats {
+  avg: number
+  median: number
+  max: number
+  total: number
+}
+
+/** A single ranked count entry (topic, domain, engaged account, …). */
+export interface RankedCount {
+  label: string
+  count: number
+}
+
+/** Deterministic, computed facts about a target. Frozen into each snapshot. */
+export interface ReportAnalytics {
+  fundamentals: {
+    accountAgeDays: number
+    lifetimeVelocity: number          // lifetime posts / account age (days)
+    followers: number
+    following: number
+    followerFollowingRatio: number
+    followRatioLabel: FollowRatioLabel
+    listed: number
+    pinnedPostId: string | null
+  }
+  composition: {
+    total: number
+    byKind: Record<PostKind, number>          // counts
+    byKindPct: Record<PostKind, number>        // 0–100
+    withMediaPct: number
+    withLinkPct: number
+    langMix: RankedCount[]                      // language code → count, ranked
+  }
+  engagement: {
+    impressions: MetricStats
+    likes: MetricStats
+    reposts: MetricStats
+    replies: MetricStats
+    quotes: MetricStats
+    bookmarks: MetricStats
+    engagementRate: number      // likes / impressions (0–1), 0 if no impressions
+    bookmarkRate: number        // bookmarks / impressions
+    amplificationRate: number   // reposts / impressions
+    performanceByKind: Record<PostKind, number>  // avg likes per kind
+    bestPostId: string | null   // highest likes
+    worstPostId: string | null  // lowest likes (among posts with impressions)
+    topDecileLikes: number      // 90th percentile likes threshold
+  }
+  cadence: {
+    pattern: CadencePattern
+    variance: CadenceVariance
+    avgPerDay: number                 // over the actual analyzed span
+    spanDays: number
+    hourHistogramUtc: number[]        // length 24
+    weekdayHistogram: number[]        // length 7, 0 = Sunday
+    peakHoursUtc: number[]            // top posting hours
+    longestGapHours: number
+  }
+  topics: {
+    domains: RankedCount[]            // from contextAnnotations
+    entities: RankedCount[]           // from contextAnnotations
+  }
+  infoDiet: {
+    domains: RankedCount[]            // from post urls (expanded hostnames)
+  }
+  network: {
+    topMentioned: RankedCount[]
+    topQuoted: RankedCount[]          // by referenced post id (placeholder-aware)
+    topReplied: RankedCount[]
+  }
+  computedAt: string  // ISO
+}
+
+/** LLM interpretation, grounded in ReportAnalytics. */
+export interface ReportNarrative {
+  executiveSummary: string
+  strategicAssessment: string
+  themes: { name: string; evidence: string; weight: number }[]
+  register: { description: string; devices: string[] }
+  narrativeArcs: { arc: string; trend: string; evidence: string }[]
+  audienceRead: string
+  contradictions: string[]
+  notablePosts: { postId: string; why: string }[]
+  engagementHooks: string[]
+  analystConclusions: string[]
+}
+
+/** Computed + interpreted change since the previous report. Null for baseline. */
+export interface ChangeSummary {
+  volumeAdded: number
+  dateRangeAdded: { from: string; to: string } | null
+  metricShifts: { metric: string; from: number; to: number; deltaPct: number }[]
+  compositionDrift: string[]      // human-readable computed drift lines
+  cadenceDrift: string[]
+  emergingTopics: string[]
+  fadingTopics: string[]
+  sustainedTopics: string[]
+  networkChanges: { appeared: string[]; disappeared: string[] }
+  narrative: string               // LLM interpretation of the above
+}
+
+/** An immutable, self-contained intelligence report at a point in time. */
+export interface IntelReportSnapshot {
+  id: string
+  createdAt: string               // ISO
+  model: string
+  synthesisSettings: SynthesisSettings
+  meta: {
+    postCount: number
+    dateRange: { from: string; to: string } | null
+    postIdsAnalyzed: string[]
+    tokenCost: number             // total_tokens reported by Venice
+  }
+  analytics: ReportAnalytics
+  narrative: ReportNarrative
+  changeSummary: ChangeSummary | null  // null only for the baseline (first) report
+  previousReportId: string | null
+}
+
 export const DEFAULT_SYNTHESIS_SETTINGS: SynthesisSettings = {
   contextCap: 80,
   temperature: 0.3,

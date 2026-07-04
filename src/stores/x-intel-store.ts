@@ -1,7 +1,59 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Profile, Post, Edge, CharacterProfile, SynthesisSettings } from '../lib/x-intel/types'
+import type { Profile, Post, Edge, CharacterProfile, SynthesisSettings, IntelReportSnapshot } from '../lib/x-intel/types'
 import { DEFAULT_SYNTHESIS_SETTINGS } from '../lib/x-intel/types'
+import { computeAnalytics, postDateRange } from '../lib/x-intel/analytics'
+
+/** Small id generator; crypto.randomUUID where available, else a random fallback. */
+export function newReportId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
+  return `r_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+/**
+ * Convert a legacy v1 CharacterProfile synthesis into a v2 baseline snapshot so
+ * upgrading users lose nothing. Analytics are recomputed from the persisted
+ * posts/edges/profile; the character fields map into the narrative. Returns null
+ * when there isn't enough data (no profile) to build a valid snapshot.
+ */
+function legacyToSnapshot(
+  synthesis: CharacterProfile,
+  profile: Profile | null,
+  posts: Post[],
+  edges: Edge[],
+  settings: SynthesisSettings,
+): IntelReportSnapshot | null {
+  if (!profile) return null
+  return {
+    id: newReportId(),
+    createdAt: synthesis.synthesizedAt || new Date().toISOString(),
+    model: synthesis.model,
+    synthesisSettings: settings,
+    meta: {
+      postCount: posts.length,
+      dateRange: postDateRange(posts),
+      postIdsAnalyzed: posts.map((p) => p.id),
+      tokenCost: 0,
+    },
+    analytics: computeAnalytics(profile, posts, edges),
+    narrative: {
+      executiveSummary: '',
+      strategicAssessment: '',
+      themes: synthesis.themes.map((t) => ({ name: t, evidence: '', weight: 0 })),
+      register: { description: synthesis.register, devices: [] },
+      narrativeArcs: [],
+      audienceRead: '',
+      contradictions: [],
+      notablePosts: synthesis.flagshipPost?.postId
+        ? [{ postId: synthesis.flagshipPost.postId, why: 'Flagship post (migrated from prior profile)' }]
+        : [],
+      engagementHooks: [],
+      analystConclusions: [],
+    },
+    changeSummary: null,
+    previousReportId: null,
+  }
+}
 
 // Per-section "last successfully refreshed" timestamps (ISO). Distinct from a
 // post's gatheredAt: a refresh that returns zero new posts is still a successful
@@ -17,7 +69,8 @@ export interface IntelReport {
   profile: Profile | null
   posts: Post[]             // newest first
   edges: Edge[]
-  synthesis: CharacterProfile | null
+  reportHistory: IntelReportSnapshot[]  // append-only, newest first
+  activeReportId: string | null         // which snapshot the right pane shows
   synthesisSettings: SynthesisSettings
   drafts: { id: string; text: string; createdAt: string }[]
   watch: boolean            // refresh on tab open
@@ -46,6 +99,9 @@ interface XIntelState {
   updateReport: (username: string, patch: Partial<IntelReport>) => void
   addCost: (username: string, cost: number) => void
   setDefaultSynthesisSettings: (s: SynthesisSettings) => void
+  appendReport: (username: string, snapshot: IntelReportSnapshot) => void
+  deleteReport: (username: string, reportId: string) => void
+  setActiveReport: (username: string, reportId: string) => void
 }
 
 export function mergePosts(existing: Post[], incoming: Post[]): Post[] {
@@ -93,7 +149,8 @@ export const useXIntelStore = create<XIntelState>()(
               profile: null,
               posts: [],
               edges: [],
-              synthesis: null,
+              reportHistory: [],
+              activeReportId: null,
               synthesisSettings: { ...s.defaultSynthesisSettings },
               drafts: [],
               watch: false,
@@ -136,7 +193,8 @@ export const useXIntelStore = create<XIntelState>()(
                 profile,
                 posts: [],
                 edges: [],
-                synthesis: null,
+                reportHistory: [],
+                activeReportId: null,
                 synthesisSettings: { ...s.defaultSynthesisSettings },
                 drafts: [],
                 watch: false,
@@ -190,10 +248,53 @@ export const useXIntelStore = create<XIntelState>()(
       },
 
       setDefaultSynthesisSettings: (settings) => set({ defaultSynthesisSettings: settings }),
+
+      appendReport: (username, snapshot) => {
+        set((s) => {
+          const key = findReportKey(s.reports, username)
+          if (!key) return s
+          const report = s.reports[key]
+          return {
+            reports: {
+              ...s.reports,
+              [key]: {
+                ...report,
+                reportHistory: [snapshot, ...report.reportHistory],
+                activeReportId: snapshot.id,
+              },
+            },
+          }
+        })
+      },
+
+      deleteReport: (username, reportId) => {
+        set((s) => {
+          const key = findReportKey(s.reports, username)
+          if (!key) return s
+          const report = s.reports[key]
+          const reportHistory = report.reportHistory.filter((r) => r.id !== reportId)
+          const activeReportId = report.activeReportId === reportId
+            ? (reportHistory[0]?.id ?? null)
+            : report.activeReportId
+          return {
+            reports: { ...s.reports, [key]: { ...report, reportHistory, activeReportId } },
+          }
+        })
+      },
+
+      setActiveReport: (username, reportId) => {
+        set((s) => {
+          const key = findReportKey(s.reports, username)
+          if (!key) return s
+          const report = s.reports[key]
+          if (!report.reportHistory.some((r) => r.id === reportId)) return s
+          return { reports: { ...s.reports, [key]: { ...report, activeReportId: reportId } } }
+        })
+      },
     }),
     {
       name: 'x-intel-reports',
-      version: 1,
+      version: 2,
       migrate: (persisted, version) => {
         const state = persisted as Partial<XIntelState>
         if (version < 1 && state.reports && state.lifetimeTotal == null) {
@@ -201,6 +302,21 @@ export const useXIntelStore = create<XIntelState>()(
             (sum, r) => sum + (r.totalCost ?? 0),
             0,
           )
+        }
+        // v1 -> v2: fold each report's single `synthesis` (CharacterProfile) into
+        // an append-only `reportHistory` baseline snapshot; nothing is lost.
+        if (version < 2 && state.reports) {
+          for (const report of Object.values(state.reports) as (IntelReport & { synthesis?: CharacterProfile | null })[]) {
+            if (report.reportHistory) continue // already migrated
+            const legacy = report.synthesis ?? null
+            const settings = report.synthesisSettings ?? DEFAULT_SYNTHESIS_SETTINGS
+            const snapshot = legacy
+              ? legacyToSnapshot(legacy, report.profile ?? null, report.posts ?? [], report.edges ?? [], settings)
+              : null
+            report.reportHistory = snapshot ? [snapshot] : []
+            report.activeReportId = snapshot?.id ?? null
+            delete report.synthesis
+          }
         }
         return state as XIntelState
       },

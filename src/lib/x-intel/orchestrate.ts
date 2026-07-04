@@ -1,6 +1,9 @@
 import { gatherProfile, gatherPosts, gatherMentions } from './gather'
 import { deriveEdges } from './normalize'
-import { mergePosts, useXIntelStore, type RefreshedAt } from '../../stores/x-intel-store'
+import { computeAnalytics, computeDelta, postDateRange } from './analytics'
+import { synthesizeReport } from './synthesize'
+import { mergePosts, useXIntelStore, newReportId, type RefreshedAt } from '../../stores/x-intel-store'
+import type { IntelReportSnapshot } from './types'
 
 /**
  * Build the next refreshedAt map for a report, stamping the given section(s) with
@@ -124,4 +127,62 @@ export async function refreshNetworkWithMentions(username: string): Promise<void
   const merged = mergePosts(existingPosts, mentionsResult.data)
   const edges = deriveEdges(profileId, merged)
   updateReport(username, { posts: merged, edges, refreshedAt: markRefreshed(username, 'network', 'feed') })
+}
+
+/**
+ * Generate a comprehensive intelligence report over the CURRENTLY-STORED posts
+ * (no gather, no X cost). Computes deterministic analytics, diffs against the
+ * previous report when one exists, asks Venice to interpret both, and appends an
+ * immutable snapshot to the report ledger. Returns the new snapshot.
+ *
+ * Analytics are frozen into the snapshot so historical reports never drift when
+ * post metrics change on a later re-gather.
+ */
+export async function generateReport(username: string): Promise<IntelReportSnapshot> {
+  const { appendReport } = useXIntelStore.getState()
+  const report = useXIntelStore.getState().reports[username]
+  if (!report) throw new Error(`No report for ${username}`)
+  if (!report.profile) throw new Error('Gather the profile first')
+  if (report.posts.length === 0) throw new Error('Gather posts first (re-gather from the target rail)')
+
+  const analytics = computeAnalytics(report.profile, report.posts, report.edges)
+  const prevSnapshot = report.reportHistory[0] ?? null
+
+  // Computed delta vs. the previous report (baseline = null)
+  let computedDelta: Omit<import('./types').ChangeSummary, 'narrative'> | null = null
+  if (prevSnapshot) {
+    const prevIds = new Set(prevSnapshot.meta.postIdsAnalyzed)
+    const newPostIds = report.posts.map((p) => p.id).filter((id) => !prevIds.has(id))
+    const newPosts = report.posts.filter((p) => !prevIds.has(p.id))
+    computedDelta = computeDelta(prevSnapshot.analytics, analytics, newPostIds, postDateRange(newPosts))
+  }
+
+  const { narrative, changeNarrative, tokenCost } = await synthesizeReport(
+    report.profile,
+    report.posts,
+    analytics,
+    computedDelta,
+    prevSnapshot,
+    report.synthesisSettings,
+  )
+
+  const snapshot: IntelReportSnapshot = {
+    id: newReportId(),
+    createdAt: new Date().toISOString(),
+    model: report.synthesisSettings.model,
+    synthesisSettings: { ...report.synthesisSettings },
+    meta: {
+      postCount: report.posts.length,
+      dateRange: postDateRange(report.posts),
+      postIdsAnalyzed: report.posts.map((p) => p.id),
+      tokenCost,
+    },
+    analytics,
+    narrative,
+    changeSummary: computedDelta ? { ...computedDelta, narrative: changeNarrative ?? '' } : null,
+    previousReportId: prevSnapshot?.id ?? null,
+  }
+
+  appendReport(username, snapshot)
+  return snapshot
 }

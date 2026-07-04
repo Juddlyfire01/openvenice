@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseSynthesis } from './synthesize'
+import { parseSynthesis, parseReport, stripMarkdownLabel } from './synthesize'
 
 const validJson = JSON.stringify({
   themes: ['crypto/AI convergence', 'anti-surveillance'],
@@ -51,5 +51,37 @@ describe('parseSynthesis', () => {
     // This is tested via the guard in synthesizeProfile, not parseSynthesis
     // Just verify parseSynthesis still throws on truly empty content
     expect(() => parseSynthesis('', 'm')).toThrow(/parse/i)
+  })
+})
+
+describe('stripMarkdownLabel', () => {
+  it('strips a leaked "markdown:" prefix', () => {
+    expect(stripMarkdownLabel('markdown: There have been no changes.')).toBe('There have been no changes.')
+  })
+
+  it('strips "md:" case-insensitively', () => {
+    expect(stripMarkdownLabel('MD:   hello')).toBe('hello')
+  })
+
+  it('leaves normal prose untouched', () => {
+    expect(stripMarkdownLabel('The account pivoted toward launches.')).toBe('The account pivoted toward launches.')
+  })
+
+  it('does not strip a colon mid-sentence', () => {
+    expect(stripMarkdownLabel('Summary: this is fine')).toBe('Summary: this is fine')
+  })
+})
+
+describe('parseReport', () => {
+  it('strips leaked markdown labels from prose fields', () => {
+    const content = JSON.stringify({
+      executiveSummary: 'markdown: A broadcast-style account.',
+      strategicAssessment: 'md: Trying to drive product awareness.',
+      audienceRead: 'Developers and crypto-natives.',
+    })
+    const r = parseReport(content)
+    expect(r.executiveSummary).toBe('A broadcast-style account.')
+    expect(r.strategicAssessment).toBe('Trying to drive product awareness.')
+    expect(r.audienceRead).toBe('Developers and crypto-natives.')
   })
 })

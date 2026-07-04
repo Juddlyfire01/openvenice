@@ -1,6 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useXIntelStore, mergePosts } from './x-intel-store'
-import type { Post } from '../lib/x-intel/types'
+import { useXIntelStore, mergePosts, newReportId } from './x-intel-store'
+import type { Post, IntelReportSnapshot } from '../lib/x-intel/types'
+
+const makeSnapshot = (id: string): IntelReportSnapshot => ({
+  id,
+  createdAt: new Date().toISOString(),
+  model: 'venice-uncensored-1-2',
+  synthesisSettings: { contextCap: 80, temperature: 0.3, model: 'venice-uncensored-1-2' },
+  meta: { postCount: 1, dateRange: null, postIdsAnalyzed: ['p1'], tokenCost: 100 },
+  analytics: {} as IntelReportSnapshot['analytics'],
+  narrative: {} as IntelReportSnapshot['narrative'],
+  changeSummary: null,
+  previousReportId: null,
+})
 
 const makePost = (id: string, createdAt: string): Post => ({
   id, authorId: '42', text: `post ${id}`, lang: 'en', createdAt,
@@ -83,5 +95,60 @@ describe('useXIntelStore', () => {
     useXIntelStore.getState().addTarget('ErikVoorhees')
     useXIntelStore.getState().updateReport('ERIKVOORHEES', { watch: true })
     expect(useXIntelStore.getState().reports['ErikVoorhees'].watch).toBe(true)
+  })
+
+  it('addTarget seeds an empty append-only report ledger', () => {
+    useXIntelStore.getState().addTarget('ErikVoorhees')
+    const r = useXIntelStore.getState().reports['ErikVoorhees']
+    expect(r.reportHistory).toEqual([])
+    expect(r.activeReportId).toBeNull()
+  })
+
+  it('appendReport prepends newest-first and activates the new report', () => {
+    const store = useXIntelStore.getState()
+    store.addTarget('ErikVoorhees')
+    store.appendReport('ErikVoorhees', makeSnapshot('a'))
+    store.appendReport('ErikVoorhees', makeSnapshot('b'))
+    const r = useXIntelStore.getState().reports['ErikVoorhees']
+    expect(r.reportHistory.map((s) => s.id)).toEqual(['b', 'a'])
+    expect(r.activeReportId).toBe('b')
+  })
+
+  it('setActiveReport switches only to an existing snapshot', () => {
+    const store = useXIntelStore.getState()
+    store.addTarget('ErikVoorhees')
+    store.appendReport('ErikVoorhees', makeSnapshot('a'))
+    store.appendReport('ErikVoorhees', makeSnapshot('b'))
+    store.setActiveReport('ErikVoorhees', 'a')
+    expect(useXIntelStore.getState().reports['ErikVoorhees'].activeReportId).toBe('a')
+    store.setActiveReport('ErikVoorhees', 'nonexistent')
+    expect(useXIntelStore.getState().reports['ErikVoorhees'].activeReportId).toBe('a') // unchanged
+  })
+
+  it('deleteReport removes a snapshot and re-points activeReportId to newest', () => {
+    const store = useXIntelStore.getState()
+    store.addTarget('ErikVoorhees')
+    store.appendReport('ErikVoorhees', makeSnapshot('a'))
+    store.appendReport('ErikVoorhees', makeSnapshot('b')) // active = b
+    store.deleteReport('ErikVoorhees', 'b')
+    const r = useXIntelStore.getState().reports['ErikVoorhees']
+    expect(r.reportHistory.map((s) => s.id)).toEqual(['a'])
+    expect(r.activeReportId).toBe('a') // fell back to remaining newest
+  })
+
+  it('deleteReport keeps activeReportId when a non-active report is removed', () => {
+    const store = useXIntelStore.getState()
+    store.addTarget('ErikVoorhees')
+    store.appendReport('ErikVoorhees', makeSnapshot('a'))
+    store.appendReport('ErikVoorhees', makeSnapshot('b')) // active = b
+    store.deleteReport('ErikVoorhees', 'a')
+    expect(useXIntelStore.getState().reports['ErikVoorhees'].activeReportId).toBe('b')
+  })
+})
+
+describe('newReportId', () => {
+  it('generates unique ids', () => {
+    const ids = new Set(Array.from({ length: 100 }, () => newReportId()))
+    expect(ids.size).toBe(100)
   })
 })
