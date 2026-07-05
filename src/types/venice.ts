@@ -64,9 +64,31 @@ export interface VeniceModel {
     constraints?: VideoConstraints | ImageConstraints
     model_sets?: string[]
     voices?: string[]
+    // Music / audio capability metadata (present on `type=music` models)
+    supports_lyrics?: boolean
+    lyrics_required?: boolean
+    supports_force_instrumental?: boolean
+    supports_lyrics_optimizer?: boolean
+    supports_language_code?: boolean
+    supports_speed?: boolean
+    min_speed?: number
+    max_speed?: number
+    default_speed?: number
+    duration_options?: number[]
+    min_duration?: number
+    max_duration?: number
+    default_duration?: number
+    min_prompt_length?: number
+    prompt_character_limit?: number
+    lyrics_character_limit?: number
+    default_voice?: string
     pricing?: {
       input?: { usd?: number }
       output?: { usd?: number }
+      generation?: { usd?: number; diem?: number }
+      per_second?: { usd?: number; diem?: number }
+      per_thousand_characters?: { usd?: number; diem?: number }
+      durations?: Record<string, { usd: number; diem: number; min_seconds: number; max_seconds: number }>
     }
   }
 }
@@ -198,6 +220,7 @@ export interface MusicQueueRequest {
   model: string
   prompt: string
   lyrics_prompt?: string
+  lyrics_optimizer?: boolean
   duration_seconds?: number
   force_instrumental?: boolean
   voice?: string

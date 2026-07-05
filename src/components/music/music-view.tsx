@@ -1,36 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSettingsStore } from '../../stores/settings-store'
 import { useModels } from '../../hooks/use-models'
 import { useAuthStore } from '../../stores/auth-store'
 import { useMusic } from '../../hooks/use-music'
-import { Label, TextArea, PrimaryButton, ErrorText } from '../ui/shared'
+import { Label, TextArea, PrimaryButton, ErrorText, PillGroup } from '../ui/shared'
 import { GenerationView } from '../ui/generation-view'
+import { getMusicCapabilities } from '../../lib/music-capabilities'
 import { cn } from '../../lib/utils'
 import { toast } from '../../stores/toast-store'
 import type { MusicQueueRequest } from '../../types/venice'
 
-const MIN_PROMPT_LENGTH = 10
-
-// Model capabilities
-interface MusicModelConfig {
-  lyrics: boolean
-  instrumental: boolean
-  voice: boolean
-  duration: boolean
-}
-
-const MODEL_CONFIGS: Record<string, MusicModelConfig> = {
-  'ace-step-1.5': { lyrics: true, instrumental: true, voice: false, duration: true },
-  'elevenlabs-music': { lyrics: true, instrumental: true, voice: true, duration: false },
-  'minimax-music-2.0': { lyrics: true, instrumental: true, voice: false, duration: false },
-  'stable-audio-2.5': { lyrics: false, instrumental: false, voice: false, duration: true },
-  'elevenlabs-sound-effects': { lyrics: false, instrumental: false, voice: false, duration: true },
-  'mmaudio-v2': { lyrics: false, instrumental: false, voice: false, duration: true },
-}
-
-function getConfig(modelId: string): MusicModelConfig {
-  const key = Object.keys(MODEL_CONFIGS).find((k) => modelId.toLowerCase().includes(k))
-  return key ? MODEL_CONFIGS[key] : { lyrics: false, instrumental: false, voice: false, duration: true }
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }
 
 export function MusicView() {
@@ -38,31 +19,61 @@ export function MusicView() {
   const selectedModel = useSettingsStore((s) => s.selectedModels.music)
   const { data: models } = useModels('music')
   const model = selectedModel || models?.[0]?.id || ''
-  const config = getConfig(model)
+  const modelObj = models?.find((m) => m.id === model)
+  const caps = getMusicCapabilities(modelObj)
 
   const [prompt, setPrompt] = useState('')
   const [lyrics, setLyrics] = useState('')
-  const [duration, setDuration] = useState(30)
+  const [duration, setDuration] = useState(caps.defaultDuration)
   const [instrumental, setInstrumental] = useState(false)
+  const [lyricsOptimizer, setLyricsOptimizer] = useState(false)
+  const [voice, setVoice] = useState('')
+
+  // Reset model-dependent controls whenever the selected model changes so the
+  // values stay within the new model's supported ranges.
+  useEffect(() => {
+    setDuration(caps.defaultDuration)
+    setInstrumental(false)
+    setLyricsOptimizer(false)
+    setVoice(caps.defaultVoice ?? caps.voices[0] ?? '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model])
 
   const { queue, isQueueing, status, audioUrl, error, suggestedPrompt, issues, reset, cancel, elapsedMs } = useMusic()
   const isProcessing = status === 'queued' || status === 'processing'
 
-  const promptTooShort = prompt.trim().length > 0 && prompt.trim().length < MIN_PROMPT_LENGTH
+  const minPromptLength = caps.minPromptLength
+  const promptLen = prompt.trim().length
+  const promptTooShort = promptLen > 0 && promptLen < minPromptLength
+
+  // When the optimizer auto-generates lyrics, the API rejects a manual
+  // `lyrics_prompt`, so we hide/disable the lyrics field while it's on.
+  const optimizerActive = caps.supportsLyricsOptimizer && lyricsOptimizer
+  const lyricsMissing = caps.lyricsRequired && !optimizerActive && !lyrics.trim()
 
   const handleGenerate = () => {
     if (!prompt.trim()) return
-    if (prompt.trim().length < MIN_PROMPT_LENGTH) {
-      toast.error('Prompt too short', `Must be at least ${MIN_PROMPT_LENGTH} characters.`)
+    if (promptLen < minPromptLength) {
+      toast.error('Prompt too short', `Must be at least ${minPromptLength} characters.`)
       return
     }
-    const req: MusicQueueRequest = {
-      model,
-      prompt: prompt.trim(),
+    if (lyricsMissing) {
+      const name = modelObj?.model_spec?.name ?? 'This model'
+      toast.error('Lyrics required', `${name} requires lyrics. Add lyrics${caps.supportsLyricsOptimizer ? ' or enable the lyrics optimizer' : ''}.`)
+      return
     }
-    if (config.lyrics && lyrics.trim()) req.lyrics_prompt = lyrics.trim()
-    if (config.duration) req.duration_seconds = duration
-    if (config.instrumental && instrumental) req.force_instrumental = true
+
+    const req: MusicQueueRequest = { model, prompt: prompt.trim() }
+
+    if (optimizerActive) {
+      req.lyrics_optimizer = true
+    } else if (caps.supportsLyrics && lyrics.trim()) {
+      req.lyrics_prompt = lyrics.trim()
+    }
+    if (caps.supportsDuration) req.duration_seconds = clamp(duration, caps.minDuration, caps.maxDuration)
+    if (caps.supportsForceInstrumental && instrumental) req.force_instrumental = true
+    if (caps.supportsVoice && voice) req.voice = voice
+
     queue(req)
   }
 
@@ -72,53 +83,88 @@ export function MusicView() {
     reset()
   }
 
+  const durationStep = caps.maxDuration > 60 ? 5 : 1
+
   const controls = (
     <>
       <div>
-        <Label hint={`${prompt.trim().length}/${MIN_PROMPT_LENGTH}+ chars`}>Prompt</Label>
-        <TextArea value={prompt} onChange={setPrompt} placeholder="An upbeat electronic track with a driving bassline and ethereal synths…" rows={4} />
+        <Label hint={caps.promptCharacterLimit ? `${promptLen}/${caps.promptCharacterLimit}` : `${promptLen}/${minPromptLength}+ chars`}>Prompt</Label>
+        <TextArea value={prompt} onChange={setPrompt} placeholder="An upbeat electronic track with a driving bassline and ethereal synths…" rows={4} maxLength={caps.promptCharacterLimit} />
         {promptTooShort && (
-          <p className="text-[12px] text-amber-300/70 mt-1.5">Prompt must be at least {MIN_PROMPT_LENGTH} characters.</p>
+          <p className="text-[12px] text-amber-300/70 mt-1.5">Prompt must be at least {minPromptLength} characters.</p>
         )}
       </div>
 
-      {config.lyrics && (
+      {caps.supportsLyrics && (
         <div>
-          <Label>Lyrics</Label>
-          <TextArea value={lyrics} onChange={setLyrics} placeholder="Optional lyrics or vocal direction…" rows={3} />
+          <Label hint={caps.lyricsRequired ? (optimizerActive ? 'auto-generated' : 'required') : 'optional'}>Lyrics</Label>
+          <TextArea
+            value={lyrics}
+            onChange={setLyrics}
+            placeholder={optimizerActive ? 'Lyrics will be generated from your prompt…' : 'Lyrics or vocal direction — use verse/chorus structure…'}
+            rows={3}
+            maxLength={caps.lyricsCharacterLimit}
+          />
+          {lyricsMissing && (
+            <p className="text-[12px] text-amber-300/70 mt-1.5">This model needs lyrics to sing.</p>
+          )}
         </div>
       )}
 
-      {config.duration && (
+      {caps.supportsLyricsOptimizer && (
+        <Toggle label="Auto-generate lyrics" value={lyricsOptimizer} onChange={setLyricsOptimizer} />
+      )}
+
+      {caps.supportsVoice && (
         <div>
-          <Label hint={`${duration}s`}>Duration</Label>
-          <input type="range" min={5} max={120} step={5} value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="w-full" />
+          <Label>Voice</Label>
+          <PillGroup
+            ariaLabel="Voice"
+            value={voice}
+            onChange={setVoice}
+            options={caps.voices.map((v) => ({ value: v, label: v }))}
+          />
         </div>
       )}
 
-      {config.instrumental && (
-        <div className="flex items-center justify-between">
-          <Label>Instrumental only</Label>
-          <button
-            onClick={() => setInstrumental(!instrumental)}
-            aria-pressed={instrumental}
-            className={cn('w-9 h-5 rounded-full transition-colors relative', instrumental ? 'bg-[var(--color-accent)]' : 'bg-white/[0.1]')}
-          >
-            <div className={cn('absolute top-[2px] w-[16px] h-[16px] rounded-full bg-white transition-all', instrumental ? 'left-[20px]' : 'left-[2px]')} />
-          </button>
-        </div>
+      {caps.supportsDuration && (
+        caps.durationOptions && caps.durationOptions.length > 0 ? (
+          <div>
+            <Label hint={`${duration}s`}>Duration</Label>
+            <PillGroup
+              ariaLabel="Duration"
+              value={String(duration)}
+              onChange={(v) => setDuration(Number(v))}
+              options={caps.durationOptions.map((d) => ({ value: String(d), label: `${d}s` }))}
+            />
+          </div>
+        ) : (
+          <div>
+            <Label hint={`${duration}s`}>Duration</Label>
+            <input
+              type="range"
+              min={caps.minDuration}
+              max={caps.maxDuration}
+              step={durationStep}
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              className="w-full"
+            />
+            <div className="flex justify-between text-[11px] text-white/30 mt-1">
+              <span>{caps.minDuration}s</span>
+              <span>{caps.maxDuration}s</span>
+            </div>
+          </div>
+        )
       )}
 
-      <div className="flex flex-wrap gap-1">
-        {config.lyrics && <Tag>Lyrics</Tag>}
-        {config.instrumental && <Tag>Instrumental</Tag>}
-        {config.voice && <Tag>Voice</Tag>}
-        {config.duration && <Tag>Custom Duration</Tag>}
-      </div>
+      {caps.supportsForceInstrumental && (
+        <Toggle label="Instrumental only" value={instrumental} onChange={setInstrumental} />
+      )}
 
       <PrimaryButton
         onClick={handleGenerate}
-        disabled={!prompt.trim() || promptTooShort || !apiKey || isQueueing || isProcessing}
+        disabled={!prompt.trim() || promptTooShort || lyricsMissing || !apiKey || isQueueing || isProcessing}
         loading={isQueueing || isProcessing}
         size="lg"
       >
@@ -228,10 +274,18 @@ function formatElapsedMusic(ms: number): string {
   return m > 0 ? `${m}m ${s % 60}s` : `${s}s`
 }
 
-function Tag({ children }: { children: React.ReactNode }) {
+function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <span className="text-[12px] text-white/55 bg-white/[0.04] border border-white/[0.06] rounded px-1.5 py-0.5">
-      {children}
-    </span>
+    <div className="flex items-center justify-between">
+      <Label>{label}</Label>
+      <button
+        onClick={() => onChange(!value)}
+        aria-pressed={value}
+        aria-label={label}
+        className={cn('w-9 h-5 rounded-full transition-colors relative', value ? 'bg-[var(--color-accent)]' : 'bg-white/[0.1]')}
+      >
+        <div className={cn('absolute top-[2px] w-[16px] h-[16px] rounded-full bg-white transition-all', value ? 'left-[20px]' : 'left-[2px]')} />
+      </button>
+    </div>
   )
 }
