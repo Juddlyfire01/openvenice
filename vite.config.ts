@@ -24,7 +24,9 @@ export default defineConfig({
         ? {
             '/api': {
               target: process.env.VITE_API_TARGET,
-              changeOrigin: true,
+              // Keep the browser Host (e.g. localhost:5173) so OAuth derives the
+              // correct redirect_uri and sets cookies on the UI origin.
+              changeOrigin: false,
             },
           }
         : {}),

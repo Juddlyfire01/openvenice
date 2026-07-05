@@ -4,16 +4,16 @@
 // 302-redirects the browser to X's consent screen.
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
-  X_AUTHORIZE_URL, X_SCOPES, COOKIE,
-  readEnv, randomUrlToken, codeChallengeS256, serializeCookie,
+  X_AUTHORIZE_URL, X_SCOPES,
+  readEnv, randomUrlToken, codeChallengeS256, packOAuthState,
 } from '../../_lib/x-oauth.js'
 
-export default function handler(_req: VercelRequest, res: VercelResponse) {
+export default function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const env = readEnv()
+    const env = readEnv(req)
     const verifier = randomUrlToken(32)
-    const state = randomUrlToken(16)
     const challenge = codeChallengeS256(verifier)
+    const state = packOAuthState(verifier)
 
     const authUrl = new URL(X_AUTHORIZE_URL)
     authUrl.searchParams.set('response_type', 'code')
@@ -24,12 +24,7 @@ export default function handler(_req: VercelRequest, res: VercelResponse) {
     authUrl.searchParams.set('code_challenge', challenge)
     authUrl.searchParams.set('code_challenge_method', 'S256')
 
-    // 10 min is plenty to complete the consent round-trip.
-    const short = { maxAge: 600 }
-    res.setHeader('Set-Cookie', [
-      serializeCookie(COOKIE.verifier, verifier, short),
-      serializeCookie(COOKIE.state, state, short),
-    ])
+    // Verifier travels in signed `state` — no cookies needed for the X round-trip.
     res.setHeader('Location', authUrl.toString())
     res.status(302).end()
   } catch (e) {

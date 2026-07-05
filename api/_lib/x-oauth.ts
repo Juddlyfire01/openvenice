@@ -34,17 +34,94 @@ export interface XOAuthEnv {
   appBaseUrl: string // where to send the user after callback
 }
 
-/** Read + validate the OAuth env vars once, with clear errors if misconfigured. */
-export function readEnv(): XOAuthEnv {
+/** Minimal request shape for deriving the browser origin during OAuth. */
+export type OAuthRequest = { headers?: Record<string, string | string[] | undefined> }
+
+function headerFirst(headers: OAuthRequest['headers'], name: string): string | undefined {
+  const v = headers?.[name]
+  if (Array.isArray(v)) return v[0]
+  return typeof v === 'string' ? v : undefined
+}
+
+function inferProto(headers: OAuthRequest['headers'], host: string): string {
+  const forwarded = headerFirst(headers, 'x-forwarded-proto')
+  if (forwarded) return forwarded.split(',')[0]!.trim()
+  if (host.startsWith('localhost') || host.startsWith('127.0.0.1')) return 'http'
+  return 'https'
+}
+
+/**
+ * OAuth redirect + post-login URLs must match the origin the user is actually
+ * browsing. Static env vars cannot work across Vite :5173, vercel dev :3000,
+ * production, and every Vercel preview hostname — cookies are origin-scoped
+ * and X requires an exact redirect_uri match.
+ */
+export function resolveOAuthOrigin(req?: OAuthRequest): { redirectUri: string; appBaseUrl: string } {
+  if (process.env.X_OAUTH_USE_ENV_URLS === 'true' && process.env.X_REDIRECT_URI) {
+    return {
+      redirectUri: process.env.X_REDIRECT_URI,
+      appBaseUrl: process.env.APP_BASE_URL || '/',
+    }
+  }
+
+  const host = headerFirst(req?.headers, 'x-forwarded-host') ?? headerFirst(req?.headers, 'host')
+  if (host) {
+    const cleanHost = host.split(',')[0]!.trim()
+    const origin = `${inferProto(req?.headers, cleanHost)}://${cleanHost}`
+    return {
+      redirectUri: `${origin}/api/x/oauth/callback`,
+      appBaseUrl: `${origin}/`,
+    }
+  }
+
+  if (process.env.X_REDIRECT_URI) {
+    return {
+      redirectUri: process.env.X_REDIRECT_URI,
+      appBaseUrl: process.env.APP_BASE_URL || '/',
+    }
+  }
+
+  const vercelUrl = process.env.VERCEL_URL
+  if (vercelUrl) {
+    const origin = vercelUrl.startsWith('http')
+      ? vercelUrl.replace(/\/$/, '')
+      : `https://${vercelUrl.replace(/\/$/, '')}`
+    return {
+      redirectUri: `${origin}/api/x/oauth/callback`,
+      appBaseUrl: `${origin}/`,
+    }
+  }
+
+  throw new Error(
+    'Could not resolve OAuth origin — browse the app over HTTP(S), or set X_REDIRECT_URI',
+  )
+}
+
+/** Whether auth cookies should use the Secure flag for this request. */
+export function cookiesAreSecure(req?: OAuthRequest): boolean {
+  const host = headerFirst(req?.headers, 'x-forwarded-host') ?? headerFirst(req?.headers, 'host')
+  if (!host) return process.env.VERCEL_ENV === 'production'
+  return inferProto(req?.headers, host.split(',')[0]!.trim()) === 'https'
+}
+
+/** Read + validate OAuth env. Pass the incoming request on login/callback routes. */
+export function readEnv(req?: OAuthRequest): XOAuthEnv {
   const clientId = process.env.X_CLIENT_ID
-  const redirectUri = process.env.X_REDIRECT_URI
-  if (!clientId) throw new Error('X_CLIENT_ID is not set')
-  if (!redirectUri) throw new Error('X_REDIRECT_URI is not set')
+  if (!clientId) {
+    const vercelEnv = process.env.VERCEL_ENV
+    if (vercelEnv === 'preview' || vercelEnv === 'development') {
+      throw new Error(
+        'X_CLIENT_ID is not set for this Vercel environment. In Vercel → Project Settings → Environment Variables, add X_CLIENT_ID (and X_CLIENT_SECRET if required) with Preview enabled, then redeploy.',
+      )
+    }
+    throw new Error('X_CLIENT_ID is not set')
+  }
+  const { redirectUri, appBaseUrl } = resolveOAuthOrigin(req)
   return {
     clientId,
     clientSecret: process.env.X_CLIENT_SECRET || null,
     redirectUri,
-    appBaseUrl: process.env.APP_BASE_URL || '/',
+    appBaseUrl,
   }
 }
 
@@ -58,12 +135,55 @@ export function codeChallengeS256(verifier: string): string {
   return crypto.createHash('sha256').update(verifier).digest('base64url')
 }
 
+// ——— Signed OAuth state (PKCE without round-trip cookies) ———
+//
+// Browsers often drop the short-lived PKCE cookies on the cross-site hop
+// (app → x.com → callback), which caused state_mismatch and “connect twice”
+// behaviour on preview/first try. We embed the verifier in a signed `state`
+// param instead so the callback only needs the query string X returns.
+
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000
+
+function oauthStateSecret(): string {
+  return process.env.X_CLIENT_SECRET || process.env.X_CLIENT_ID || 'oauth-state'
+}
+
+/** Build the `state` query param: HMAC-signed verifier + expiry. */
+export function packOAuthState(verifier: string): string {
+  const payload = JSON.stringify({
+    v: verifier,
+    e: Date.now() + OAUTH_STATE_TTL_MS,
+    n: randomUrlToken(8),
+  })
+  const sig = crypto.createHmac('sha256', oauthStateSecret()).update(payload).digest('base64url')
+  return Buffer.from(JSON.stringify({ p: payload, s: sig })).toString('base64url')
+}
+
+/** Recover the PKCE verifier from `state`, or null if invalid/expired. */
+export function unpackOAuthState(state: string): string | null {
+  try {
+    const { p, s } = JSON.parse(Buffer.from(state, 'base64url').toString('utf8')) as {
+      p: string
+      s: string
+    }
+    const expected = crypto.createHmac('sha256', oauthStateSecret()).update(p).digest('base64url')
+    if (s !== expected) return null
+    const { v, e } = JSON.parse(p) as { v: string; e: number }
+    if (!v || Date.now() > e) return null
+    return v
+  } catch {
+    return null
+  }
+}
+
 // ——— Cookies ———
 
 export interface CookieOpts {
   maxAge?: number // seconds
   httpOnly?: boolean
   path?: string
+  /** Default true. Set false for http://localhost responses. */
+  secure?: boolean
 }
 
 export function serializeCookie(name: string, value: string, opts: CookieOpts = {}): string {
@@ -71,7 +191,7 @@ export function serializeCookie(name: string, value: string, opts: CookieOpts = 
   parts.push(`Path=${opts.path ?? '/'}`)
   if (opts.maxAge != null) parts.push(`Max-Age=${opts.maxAge}`)
   if (opts.httpOnly !== false) parts.push('HttpOnly')
-  parts.push('Secure')
+  if (opts.secure !== false) parts.push('Secure')
   parts.push('SameSite=Lax')
   return parts.join('; ')
 }

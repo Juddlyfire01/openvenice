@@ -5,6 +5,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   COOKIE, readEnv, refreshAccessToken, parseCookies, serializeCookie, clearCookie,
+  cookiesAreSecure,
 } from './x-oauth.js'
 
 // Refresh a bit early so in-flight requests never race the expiry boundary.
@@ -27,16 +28,17 @@ export async function resolveSession(req: VercelRequest): Promise<ResolvedSessio
 
   if (!refresh) return null // nothing to refresh with → treat as disconnected
 
-  const env = readEnv()
+  const env = readEnv(req)
   const token = await refreshAccessToken(env, refresh)
   const expiryMs = Date.now() + token.expires_in * 1000
+  const secure = cookiesAreSecure(req)
   const setCookies = [
-    serializeCookie(COOKIE.access, token.access_token, { maxAge: token.expires_in }),
-    serializeCookie(COOKIE.expiry, String(expiryMs), { maxAge: 60 * 60 * 24 * 30 }),
+    serializeCookie(COOKIE.access, token.access_token, { maxAge: token.expires_in, secure }),
+    serializeCookie(COOKIE.expiry, String(expiryMs), { maxAge: 60 * 60 * 24 * 30, secure }),
   ]
   // X may rotate the refresh token; persist the new one when present.
   if (token.refresh_token) {
-    setCookies.push(serializeCookie(COOKIE.refresh, token.refresh_token, { maxAge: 60 * 60 * 24 * 60 }))
+    setCookies.push(serializeCookie(COOKIE.refresh, token.refresh_token, { maxAge: 60 * 60 * 24 * 60, secure }))
   }
   return { accessToken: token.access_token, setCookies }
 }

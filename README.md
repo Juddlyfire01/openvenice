@@ -51,6 +51,19 @@ npm run dev
 
 Open `http://localhost:5173`, click **API Key** in the header, paste your [Venice AI API key](https://venice.ai/settings/api), and start using it.
 
+### X OAuth (Intel → Connect X)
+
+Intel’s X login uses server-side OAuth and HttpOnly cookies. It **does not work with plain `npm run dev` alone** — you need the `/api` serverless routes. See **[docs/x-oauth-dev.md](docs/x-oauth-dev.md)** for local + Vercel preview setup (why previews need per-URL X app registration, two-terminal dev, etc.).
+
+Quick local start:
+
+```bash
+vercel dev   # terminal 1 — API
+# terminal 2: VITE_API_TARGET=http://localhost:3000 npm run dev
+```
+
+Register `http://localhost:5173/api/x/oauth/callback` in the [X developer portal](https://developer.x.com).
+
 ### Where does my API key live?
 
 By default, your key is held in **`sessionStorage`** — meaning it's gone when you close the tab. If you check **Remember across sessions**, the key is encrypted with a passphrase you choose (AES-GCM via PBKDF2, 250k iterations, all in-browser) and stored in `localStorage`. Your passphrase is never persisted; you re-enter it on each new session.

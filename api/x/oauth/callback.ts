@@ -6,11 +6,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   COOKIE, readEnv, exchangeCode, parseCookies, serializeCookie, clearCookie,
+  cookiesAreSecure, unpackOAuthState,
 } from '../../_lib/x-oauth.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const env = readEnv()
+    const env = readEnv(req)
     const code = typeof req.query.code === 'string' ? req.query.code : ''
     const state = typeof req.query.state === 'string' ? req.query.state : ''
     const error = typeof req.query.error === 'string' ? req.query.error : ''
@@ -18,26 +19,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (error) return bounce(res, env.appBaseUrl, `x_error=${encodeURIComponent(error)}`)
     if (!code || !state) return bounce(res, env.appBaseUrl, 'x_error=missing_code')
 
+    // Prefer signed state (survives cross-site redirect without cookies). Fall back
+    // to legacy PKCE cookies for in-flight logins started before deploy.
     const cookies = parseCookies(req.headers.cookie)
-    if (!cookies[COOKIE.state] || cookies[COOKIE.state] !== state) {
-      return bounce(res, env.appBaseUrl, 'x_error=state_mismatch')
+    let verifier = unpackOAuthState(state)
+    if (!verifier && cookies[COOKIE.state] === state && cookies[COOKIE.verifier]) {
+      verifier = cookies[COOKIE.verifier]
     }
-    const verifier = cookies[COOKIE.verifier]
-    if (!verifier) return bounce(res, env.appBaseUrl, 'x_error=missing_verifier')
+    if (!verifier) return bounce(res, env.appBaseUrl, 'x_error=invalid_state')
 
     const token = await exchangeCode(env, code, verifier)
     const expiryMs = Date.now() + token.expires_in * 1000
+    const secure = cookiesAreSecure(req)
 
     const cookieHeaders = [
       // Access token lives as long as it's valid; refresh token long-lived.
-      serializeCookie(COOKIE.access, token.access_token, { maxAge: token.expires_in }),
-      serializeCookie(COOKIE.expiry, String(expiryMs), { maxAge: 60 * 60 * 24 * 30 }),
+      serializeCookie(COOKIE.access, token.access_token, { maxAge: token.expires_in, secure }),
+      serializeCookie(COOKIE.expiry, String(expiryMs), { maxAge: 60 * 60 * 24 * 30, secure }),
       // Clear the one-shot PKCE cookies.
       clearCookie(COOKIE.verifier),
       clearCookie(COOKIE.state),
     ]
     if (token.refresh_token) {
-      cookieHeaders.push(serializeCookie(COOKIE.refresh, token.refresh_token, { maxAge: 60 * 60 * 24 * 60 }))
+      cookieHeaders.push(serializeCookie(COOKIE.refresh, token.refresh_token, { maxAge: 60 * 60 * 24 * 60, secure }))
     }
 
     res.setHeader('Set-Cookie', cookieHeaders)

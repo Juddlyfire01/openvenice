@@ -62,6 +62,11 @@ async function runOAuthBootstrap(): Promise<OAuthBootstrapResult> {
   let connected = false
   try {
     connected = await refreshSelfSession()
+    // Auth cookies are set on the callback 302; retry once if the probe races the redirect.
+    if (oauthReturn && !oauthError && !connected) {
+      await new Promise((r) => setTimeout(r, 150))
+      connected = await refreshSelfSession()
+    }
   } catch {
     connected = false
   }
