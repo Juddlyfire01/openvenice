@@ -299,7 +299,7 @@ export const useXIntelStore = create<XIntelState>()(
     }),
     {
       name: 'x-intel-reports',
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
         const state = persisted as Partial<XIntelState>
         if (version < 1 && state.reports && state.lifetimeTotal == null) {
@@ -321,6 +321,14 @@ export const useXIntelStore = create<XIntelState>()(
             report.reportHistory = snapshot ? [snapshot] : []
             report.activeReportId = snapshot?.id ?? null
             delete report.synthesis
+          }
+        }
+        // v2 -> v3: backfill link entity fields on cached profiles.
+        if (version < 3 && state.reports) {
+          for (const report of Object.values(state.reports)) {
+            if (!report.profile) continue
+            if (!Array.isArray(report.profile.bioUrls)) report.profile.bioUrls = []
+            if (report.profile.website === undefined) report.profile.website = null
           }
         }
         return state as XIntelState

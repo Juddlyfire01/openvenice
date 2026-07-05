@@ -9,6 +9,8 @@ function makeProfile(over: Partial<Profile> = {}): Profile {
     displayName: 'Test',
     avatarUrl: '',
     bio: null,
+    bioUrls: [],
+    website: null,
     location: null,
     url: null,
     verified: { legacy: false, type: null },

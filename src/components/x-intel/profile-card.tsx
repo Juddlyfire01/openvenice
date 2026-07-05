@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useXIntelStore } from '../../stores/x-intel-store'
 import { useXSelfStore } from '../../stores/x-self-store'
 import { useModels } from '../../hooks/use-models'
 import { refreshProfile, runGather } from '../../lib/x-intel/orchestrate'
 import { linkify } from '../../lib/x-intel/linkify'
+import { ensureProfileShape, profileNeedsLinkRefresh } from '../../lib/x-intel/normalize'
 import { SectionRefresh, SectionEmpty } from './section-actions'
 import { formatTokens, cn } from '../../lib/utils'
 
@@ -12,7 +13,7 @@ import { formatTokens, cn } from '../../lib/utils'
  * open externally; a mention is a strong related-account signal, so clicking it
  * offers to add that account as a new intel target (mirrors the network graph).
  */
-function BioText({ text }: { text: string }) {
+function BioText({ text, bioUrls }: { text: string; bioUrls?: { url: string; expanded: string; display: string }[] }) {
   const addTarget = useXIntelStore((s) => s.addTarget)
   const connected = useXSelfStore((s) => s.connected)
 
@@ -30,7 +31,7 @@ function BioText({ text }: { text: string }) {
   const linkCls = 'text-[var(--color-accent)] hover:underline'
   return (
     <p className="text-[12px] text-white/50 mt-1.5 break-words">
-      {linkify(text).map((tok, i) => {
+      {linkify(text, bioUrls).map((tok, i) => {
         switch (tok.type) {
           case 'url':
             return (
@@ -72,6 +73,7 @@ export function ProfileCard() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
+  const linkRefreshAttempted = useRef<Set<string>>(new Set())
 
   const runRefresh = async () => {
     if (!activeTarget) return
@@ -86,11 +88,23 @@ export function ProfileCard() {
     }
   }
 
+  const profile = report?.profile ? ensureProfileShape(report.profile) : null
+
+  // Targets persisted before link-entity support lack bioUrls — refresh once per profile id.
+  useEffect(() => {
+    if (!connected || !activeTarget || !profile || !profileNeedsLinkRefresh(profile)) return
+    if (linkRefreshAttempted.current.has(profile.id)) return
+    linkRefreshAttempted.current.add(profile.id)
+    refreshProfile(activeTarget).catch(() => {
+      linkRefreshAttempted.current.delete(profile.id)
+    })
+  }, [connected, activeTarget, profile])
+
   if (!activeTarget || !report) {
     return <div className="flex items-center justify-center h-full text-[12px] text-white/15">No target selected</div>
   }
 
-  const { profile, synthesisSettings, reportHistory } = report
+  const { synthesisSettings, reportHistory } = report
   const latest = reportHistory[0] ?? null
 
   const setSetting = (patch: Partial<typeof synthesisSettings>) => {
@@ -136,9 +150,17 @@ export function ProfileCard() {
           <div className="text-[11px] text-white/25">
             @{profile.username}
             {profile.location && <> · {profile.location}</>}
+            {profile.website && (
+              <>
+                {' · '}
+                <a href={profile.website.href} target="_blank" rel="noopener noreferrer nofollow" className="text-[var(--color-accent)] hover:underline">
+                  {profile.website.display}
+                </a>
+              </>
+            )}
             {profile.accountCreated && <> · joined {new Date(profile.accountCreated).getFullYear()}</>}
           </div>
-          {profile.bio && <BioText text={profile.bio} />}
+          {profile.bio && <BioText text={profile.bio} bioUrls={profile.bioUrls} />}
         </div>
       </div>
 

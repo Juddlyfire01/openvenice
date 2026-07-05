@@ -1,5 +1,23 @@
 // src/lib/x-intel/normalize.ts
 import type { XUserRaw, XPostRaw, Profile, Post, Edge } from './types'
+import { condenseUrlLabel } from './linkify'
+
+function mapBioUrls(raw: XUserRaw): Profile['bioUrls'] {
+  return (raw.entities?.description?.urls ?? []).map((u) => ({
+    url: u.url,
+    expanded: u.expanded_url,
+    display: u.display_url,
+    start: u.start,
+    end: u.end,
+  }))
+}
+
+function mapWebsite(raw: XUserRaw): Profile['website'] {
+  const ent = raw.entities?.url?.urls?.[0]
+  if (ent) return { href: ent.url, display: ent.display_url }
+  if (raw.url) return { href: raw.url, display: condenseUrlLabel(raw.url) }
+  return null
+}
 
 export function normalizeProfile(raw: XUserRaw): Profile {
   const m = raw.public_metrics
@@ -9,6 +27,8 @@ export function normalizeProfile(raw: XUserRaw): Profile {
     displayName: raw.name,
     avatarUrl: raw.profile_image_url ?? '',
     bio: raw.description || null,
+    bioUrls: mapBioUrls(raw),
+    website: mapWebsite(raw),
     location: raw.location || null,
     url: raw.url || null,
     verified: {
@@ -28,6 +48,23 @@ export function normalizeProfile(raw: XUserRaw): Profile {
     mostRecentPostId: raw.most_recent_tweet_id ?? null,
     gatheredAt: new Date().toISOString(),
   }
+}
+
+/** Backfill link metadata fields on profiles persisted before bioUrls existed. */
+export function ensureProfileShape(profile: Profile): Profile {
+  return {
+    ...profile,
+    bioUrls: profile.bioUrls ?? [],
+    website: profile.website ?? null,
+  }
+}
+
+/** True when a stored profile is missing link entity data that only a fresh fetch provides. */
+export function profileNeedsLinkRefresh(profile: Profile): boolean {
+  if (!Array.isArray(profile.bioUrls)) return true
+  if (!profile.bio?.includes('t.co')) return false
+  if (profile.bioUrls.length === 0) return true
+  return profile.bioUrls.every((u) => u.start == null)
 }
 
 const KIND_MAP: Record<string, Post['kind']> = {

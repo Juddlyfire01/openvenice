@@ -10,11 +10,11 @@ import { SelfReport } from './self-report'
 
 /** Bio with clickable URLs / mentions / hashtags (mentions open on X here —
  *  the self view has no target concept to add into). */
-function SelfBio({ text }: { text: string }) {
+function SelfBio({ text, bioUrls }: { text: string; bioUrls?: { url: string; expanded: string; display: string }[] }) {
   const linkCls = 'text-[var(--color-accent)] hover:underline'
   return (
     <p className="text-[12px] text-white/50 mt-1.5 break-words">
-      {linkify(text).map((tok, i) => {
+      {linkify(text, bioUrls).map((tok, i) => {
         if (tok.type === 'url' || tok.type === 'hashtag') {
           const href = tok.type === 'url' ? tok.href : `https://x.com/hashtag/${encodeURIComponent(tok.tag)}`
           return <a key={i} href={href} target="_blank" rel="noopener noreferrer nofollow" className={linkCls}>{tok.value}</a>
@@ -122,9 +122,17 @@ export function SelfProfileView() {
                 <div className="text-[11px] text-white/25">
                   @{profile.username}
                   {profile.location && <> · {profile.location}</>}
+                  {profile.website && (
+                    <>
+                      {' · '}
+                      <a href={profile.website.href} target="_blank" rel="noopener noreferrer nofollow" className="text-[var(--color-accent)] hover:underline">
+                        {profile.website.display}
+                      </a>
+                    </>
+                  )}
                   {profile.accountCreated && <> · joined {new Date(profile.accountCreated).getFullYear()}</>}
                 </div>
-                {profile.bio && <SelfBio text={profile.bio} />}
+                {profile.bio && <SelfBio text={profile.bio} bioUrls={profile.bioUrls} />}
               </div>
             </div>
 

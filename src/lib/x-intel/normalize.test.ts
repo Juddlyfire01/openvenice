@@ -1,6 +1,6 @@
 // src/lib/x-intel/normalize.test.ts
 import { describe, it, expect } from 'vitest'
-import { normalizeProfile, normalizePost, deriveEdges } from './normalize'
+import { normalizeProfile, normalizePost, deriveEdges, ensureProfileShape, profileNeedsLinkRefresh } from './normalize'
 import type { XUserRaw, XPostRaw } from './types'
 
 const rawUser: XUserRaw = {
@@ -36,12 +36,57 @@ describe('normalizeProfile', () => {
     expect(p.pinnedPostId).toBe('900')
     expect(p.mostRecentPostId).toBe('999')
     expect(p.gatheredAt).toBeTruthy()
+    expect(p.bioUrls).toEqual([])
+    expect(p.website).toEqual({ href: 'https://t.co/abc', display: 'https://t.co/abc' })
+  })
+
+  it('maps description and profile url entities for condensed display', () => {
+    const p = normalizeProfile({
+      ...rawUser,
+      description: 'Founder of https://t.co/iUPC8ij60f',
+      url: 'https://t.co/site',
+      entities: {
+        description: {
+          urls: [{
+            url: 'https://t.co/iUPC8ij60f',
+            expanded_url: 'https://venice.ai',
+            display_url: 'Venice.ai',
+            start: 11,
+            end: 34,
+          }],
+        },
+        url: {
+          urls: [{ url: 'https://t.co/site', expanded_url: 'https://venice.ai', display_url: 'venice.ai' }],
+        },
+      },
+    })
+    expect(p.bioUrls).toEqual([
+      { url: 'https://t.co/iUPC8ij60f', expanded: 'https://venice.ai', display: 'Venice.ai', start: 11, end: 34 },
+    ])
+    expect(p.website).toEqual({ href: 'https://t.co/site', display: 'venice.ai' })
+  })
+
+  it('ensureProfileShape backfills missing link fields on legacy profiles', () => {
+    const legacy = normalizeProfile({ id: '1', name: 'x', username: 'x', verified_type: 'none' })
+    const shaped = ensureProfileShape({ ...legacy, bioUrls: undefined as unknown as [], website: undefined as unknown as null })
+    expect(shaped.bioUrls).toEqual([])
+    expect(shaped.website).toBeNull()
+  })
+
+  it('profileNeedsLinkRefresh detects stale cached profiles with t.co in bio', () => {
+    const stale = ensureProfileShape({
+      ...normalizeProfile({ id: '1', name: 'x', username: 'x', description: 'see https://t.co/abc', verified_type: 'none' }),
+      bioUrls: [],
+    })
+    expect(profileNeedsLinkRefresh(stale)).toBe(true)
   })
 
   it('treats verified_type "none" and missing fields as nulls/zeros', () => {
     const p = normalizeProfile({ id: '1', name: 'x', username: 'x', verified_type: 'none' })
     expect(p.verified.type).toBeNull()
     expect(p.bio).toBeNull()
+    expect(p.bioUrls).toEqual([])
+    expect(p.website).toBeNull()
     expect(p.metrics.followers).toBe(0)
   })
 })

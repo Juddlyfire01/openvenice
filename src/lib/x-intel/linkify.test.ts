@@ -1,20 +1,54 @@
 import { describe, it, expect } from 'vitest'
-import { linkify } from './linkify'
+import { linkify, condenseUrlLabel } from './linkify'
+
+describe('condenseUrlLabel', () => {
+  it('strips protocol and www', () => {
+    expect(condenseUrlLabel('https://www.venice.ai')).toBe('venice.ai')
+    expect(condenseUrlLabel('https://example.com/path?q=1')).toBe('example.com/path?q=1')
+  })
+
+  it('leaves t.co unchanged', () => {
+    expect(condenseUrlLabel('https://t.co/abc123')).toBe('https://t.co/abc123')
+  })
+})
 
 describe('linkify', () => {
   it('returns a single text token for plain text', () => {
     expect(linkify('just plain words')).toEqual([{ type: 'text', value: 'just plain words' }])
   })
 
-  it('extracts a url token', () => {
+  it('extracts a url token with condensed fallback label', () => {
     const t = linkify('Private & Unrestricted AI | https://t.co/iIt1pyF1TK')
     expect(t[0]).toEqual({ type: 'text', value: 'Private & Unrestricted AI | ' })
     expect(t[1]).toEqual({ type: 'url', value: 'https://t.co/iIt1pyF1TK', href: 'https://t.co/iIt1pyF1TK' })
   })
 
-  it('trims trailing punctuation off a url', () => {
+  it('uses X display_url from bio entities when provided', () => {
+    const t = linkify('Founder of https://t.co/iUPC8ij60f', [
+      { url: 'https://t.co/iUPC8ij60f', expanded: 'https://venice.ai', display: 'Venice.ai' },
+    ])
+    expect(t[1]).toEqual({ type: 'url', value: 'Venice.ai', href: 'https://t.co/iUPC8ij60f' })
+  })
+
+  it('uses entity start/end indices when present (X display rules)', () => {
+    const bio = 'Founder of https://t.co/iUPC8ij60f'
+    const t = linkify(bio, [
+      {
+        url: 'https://t.co/iUPC8ij60f',
+        expanded: 'https://venice.ai',
+        display: 'Venice.ai',
+        start: 11,
+        end: 34,
+      },
+    ])
+    expect(t.map((x) => x.type)).toEqual(['text', 'url'])
+    expect(t[0]).toEqual({ type: 'text', value: 'Founder of ' })
+    expect(t[1]).toEqual({ type: 'url', value: 'Venice.ai', href: 'https://t.co/iUPC8ij60f' })
+  })
+
+  it('condenses plain https URLs without entities', () => {
     const t = linkify('see https://example.com/page, ok')
-    expect(t[1]).toEqual({ type: 'url', value: 'https://example.com/page', href: 'https://example.com/page' })
+    expect(t[1]).toEqual({ type: 'url', value: 'example.com/page', href: 'https://example.com/page' })
     expect(t[2]).toEqual({ type: 'text', value: ',' })
     expect(t[3]).toEqual({ type: 'text', value: ' ok' })
   })

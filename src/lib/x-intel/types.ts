@@ -4,6 +4,10 @@ export interface Profile {
   displayName: string
   avatarUrl: string
   bio: string | null
+  /** Parsed URL entities from the bio (for condensed link labels per X display rules). */
+  bioUrls: { url: string; expanded: string; display: string; start?: number; end?: number }[]
+  /** Profile website link (condensed display + t.co href). */
+  website: { href: string; display: string } | null
   location: string | null
   url: string | null
   verified: { legacy: boolean; type: 'blue' | 'business' | 'government' | null }
@@ -215,6 +219,14 @@ export interface XUserRaw {
     listed_count: number
     like_count?: number
     media_count?: number
+  }
+  entities?: {
+    description?: {
+      urls?: { url: string; expanded_url: string; display_url: string; start?: number; end?: number }[]
+    }
+    url?: {
+      urls?: { url: string; expanded_url: string; display_url: string }[]
+    }
   }
 }
 
