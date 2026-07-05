@@ -72,15 +72,14 @@ export interface IntelReport {
   reportHistory: IntelReportSnapshot[]  // append-only, newest first
   activeReportId: string | null         // which snapshot the right pane shows
   synthesisSettings: SynthesisSettings
-  drafts: { id: string; text: string; createdAt: string }[]
   watch: boolean            // refresh on tab open
   totalCost: number
   createdAt: string
   refreshedAt: RefreshedAt
 }
 
-export type IntelSubTab = 'profile' | 'network' | 'feed' | 'draft'
-export type IntelTopTab = 'me' | 'targets'
+export type IntelSubTab = 'profile' | 'network' | 'feed'
+export type IntelTopTab = 'me' | 'targets' | 'post'
 
 interface XIntelState {
   targets: string[]
@@ -156,7 +155,6 @@ export const useXIntelStore = create<XIntelState>()(
               reportHistory: [],
               activeReportId: null,
               synthesisSettings: { ...s.defaultSynthesisSettings },
-              drafts: [],
               watch: false,
               totalCost: 0,
               createdAt: new Date().toISOString(),
@@ -168,7 +166,7 @@ export const useXIntelStore = create<XIntelState>()(
 
       // Seed a target from an already-fetched profile (e.g. the token-validation
       // lookup) without spending another request. If the target already exists,
-      // only its profile is refreshed — posts, edges, drafts and cost are kept.
+      // only its profile is refreshed — posts, edges, and cost are kept.
       seedTarget: (profile) => {
         const name = canonical(profile.username)
         if (!name) return
@@ -200,7 +198,6 @@ export const useXIntelStore = create<XIntelState>()(
                 reportHistory: [],
                 activeReportId: null,
                 synthesisSettings: { ...s.defaultSynthesisSettings },
-                drafts: [],
                 watch: false,
                 totalCost: 0,
                 createdAt: new Date().toISOString(),
@@ -299,7 +296,7 @@ export const useXIntelStore = create<XIntelState>()(
     }),
     {
       name: 'x-intel-reports',
-      version: 3,
+      version: 4,
       migrate: (persisted, version) => {
         const state = persisted as Partial<XIntelState>
         if (version < 1 && state.reports && state.lifetimeTotal == null) {
@@ -329,6 +326,12 @@ export const useXIntelStore = create<XIntelState>()(
             if (!report.profile) continue
             if (!Array.isArray(report.profile.bioUrls)) report.profile.bioUrls = []
             if (report.profile.website === undefined) report.profile.website = null
+          }
+        }
+        // v3 -> v4: drop legacy per-target text drafts (replaced by Compose workspace).
+        if (version < 4 && state.reports) {
+          for (const report of Object.values(state.reports) as (IntelReport & { drafts?: unknown })[]) {
+            delete report.drafts
           }
         }
         return state as XIntelState

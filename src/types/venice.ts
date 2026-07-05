@@ -120,6 +120,8 @@ export interface VeniceParameters {
   enable_web_citations?: boolean
   include_search_results_in_stream?: boolean
   return_search_results_as_documents?: boolean
+  /** xAI native web + X/Twitter search (Grok models with supportsXSearch). */
+  enable_x_search?: boolean
 }
 
 export interface ChatCompletionRequest {

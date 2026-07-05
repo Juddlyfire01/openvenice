@@ -1,20 +1,22 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useXIntelStore } from '../../stores/x-intel-store'
 import { TargetRail } from './target-rail'
 import { ActivityFeed } from './activity-feed'
 import { ProfileCard } from './profile-card'
 import { ProfileReport } from './profile-report'
 import { NetworkGraph } from './network-graph'
-import { DraftWorkspace } from './draft-workspace'
+import { ComposeWorkspace } from '../compose/compose-workspace'
 import { SelfProfileView } from './self-profile-view'
 import { runGather } from '../../lib/x-intel/orchestrate'
 import { refreshSelfSession } from '../../lib/x-intel/self-orchestrate'
+import { syncComposeContextFromActiveTarget } from '../../lib/compose/open-compose'
 import { SubTabs } from '../ui/sub-tabs'
 
-// Top-level split: your own OAuth profile vs. target analysis.
+// Top-level split: your own OAuth profile, target analysis, and the composer.
 const TOP_TABS = [
   { id: 'me' as const, label: 'Profile' },
   { id: 'targets' as const, label: 'Targets' },
+  { id: 'post' as const, label: 'Post' },
 ]
 
 export function IntelView() {
@@ -22,7 +24,17 @@ export function IntelView() {
   const setActiveSubTab = useXIntelStore((s) => s.setActiveSubTab)
   const activeTopTab = useXIntelStore((s) => s.activeTopTab)
   const setActiveTopTab = useXIntelStore((s) => s.setActiveTopTab)
+  const activeTarget = useXIntelStore((s) => s.activeTarget)
   const targetCount = useXIntelStore((s) => s.targets.length)
+  const prevTopTab = useRef(activeTopTab)
+
+  // Entering Post from Profile/Targets: carry the active target into compose context.
+  useEffect(() => {
+    if (activeTopTab === 'post' && prevTopTab.current !== 'post') {
+      syncComposeContextFromActiveTarget()
+    }
+    prevTopTab.current = activeTopTab
+  }, [activeTopTab, activeTarget])
 
   // The old per-target "Profile" sub-tab is renamed to Target/Targets, plural
   // only when more than one target is loaded (dynamic per your spec).
@@ -31,7 +43,6 @@ export function IntelView() {
     { id: 'profile' as const, label: targetLabel },
     { id: 'feed' as const, label: 'Feed' },
     { id: 'network' as const, label: 'Network' },
-    { id: 'draft' as const, label: 'Post' },
   ]
 
   useEffect(() => {
@@ -57,6 +68,10 @@ export function IntelView() {
         <div className="flex-1 min-h-0">
           <SelfProfileView />
         </div>
+      ) : activeTopTab === 'post' ? (
+        <div className="flex-1 min-h-0">
+          <ComposeWorkspace />
+        </div>
       ) : (
         <div className="flex flex-1 min-h-0">
           <TargetRail />
@@ -76,7 +91,6 @@ export function IntelView() {
               )}
               {activeSubTab === 'network' && <NetworkGraph />}
               {activeSubTab === 'feed' && <ActivityFeed />}
-              {activeSubTab === 'draft' && <DraftWorkspace />}
             </div>
           </div>
         </div>
