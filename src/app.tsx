@@ -5,7 +5,6 @@ import { useAuthStore } from './stores/auth-store'
 import { Sidebar } from './components/layout/sidebar'
 import { Header } from './components/layout/header'
 import { ApiKeyDialog } from './components/layout/api-key-dialog'
-import { XCredentialsDialog } from './components/x-intel/credentials-dialog'
 import { ChatView } from './components/chat/chat-view'
 import { ImagePage } from './components/image/image-page'
 import { AudioView } from './components/audio/audio-view'
@@ -50,7 +49,6 @@ const TAB_ORDER: Tab[] = ['chat', 'image', 'audio', 'music', 'video', 'embedding
 export function App() {
   const needsUnlock = useAuthStore((s) => s.hasEncrypted && !s.apiKey)
   const [apiKeyOpen, setApiKeyOpen] = useState(needsUnlock)
-  const [xKeyOpen, setXKeyOpen] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const activeTab = useSettingsStore((s) => s.activeTab)
   const setActiveTab = useSettingsStore((s) => s.setActiveTab)
@@ -99,7 +97,6 @@ export function App() {
       <div className="flex flex-col flex-1 min-w-0">
         <Header
           onOpenApiKey={() => setApiKeyOpen(true)}
-          onOpenXKey={() => setXKeyOpen(true)}
           onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
         />
         <main className="flex-1 min-h-0 overflow-hidden">
@@ -110,7 +107,6 @@ export function App() {
       </div>
       </div>
       <ApiKeyDialog open={apiKeyOpen} onClose={() => setApiKeyOpen(false)} />
-      <XCredentialsDialog open={xKeyOpen} onClose={() => setXKeyOpen(false)} />
       <Toaster />
     </>
   )

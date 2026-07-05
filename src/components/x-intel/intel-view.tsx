@@ -8,6 +8,7 @@ import { NetworkGraph } from './network-graph'
 import { DraftWorkspace } from './draft-workspace'
 import { SelfProfileView } from './self-profile-view'
 import { runGather } from '../../lib/x-intel/orchestrate'
+import { refreshSelfSession } from '../../lib/x-intel/self-orchestrate'
 import { SubTabs } from '../ui/sub-tabs'
 
 // Top-level split: your own OAuth profile vs. target analysis.
@@ -37,10 +38,19 @@ export function IntelView() {
   useEffect(() => {
     if (ranWatch.current) return
     ranWatch.current = true
-    const { targets, reports } = useXIntelStore.getState()
-    for (const t of targets) {
-      if (reports[t]?.watch) runGather(t).catch(() => { /* surfaced on manual gather */ })
-    }
+    // Reconcile the OAuth session once for the whole Intel view. Both the
+    // Profile tab and target analysis depend on `connected`; only after it's
+    // confirmed do we auto-run watched-target gathers (which now authenticate
+    // through the same OAuth proxy).
+    refreshSelfSession()
+      .then((isConnected) => {
+        if (!isConnected) return
+        const { targets, reports } = useXIntelStore.getState()
+        for (const t of targets) {
+          if (reports[t]?.watch) runGather(t).catch(() => { /* surfaced on manual gather */ })
+        }
+      })
+      .catch(() => { /* session probe failure = treated as disconnected */ })
   }, [])
 
   return (

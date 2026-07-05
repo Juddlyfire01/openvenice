@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ReactFlow, Background, Controls, type Node, type Edge as FlowEdge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useXIntelStore } from '../../stores/x-intel-store'
-import { useXAuthStore } from '../../stores/x-intel-auth-store'
+import { useXSelfStore } from '../../stores/x-self-store'
 import { runGather, refreshPosts, refreshNetworkWithMentions } from '../../lib/x-intel/orchestrate'
 import { SectionRefresh, SectionEmpty } from './section-actions'
 import type { Edge } from '../../lib/x-intel/types'
@@ -25,7 +25,7 @@ export function NetworkGraph() {
   const activeTarget = useXIntelStore((s) => s.activeTarget)
   const report = useXIntelStore((s) => (s.activeTarget ? s.reports[s.activeTarget] : undefined))
   const addTarget = useXIntelStore((s) => s.addTarget)
-  const bearerToken = useXAuthStore((s) => s.bearerToken)
+  const connected = useXSelfStore((s) => s.connected)
   const [kindFilter, setKindFilter] = useState<Set<Edge['kind']>>(new Set(KINDS))
   const [minWeight, setMinWeight] = useState(1)
   const [refreshing, setRefreshing] = useState<null | 'posts' | 'mentions'>(null)
@@ -103,13 +103,13 @@ export function NetworkGraph() {
     return (
       <SectionEmpty
         title="No network gathered yet"
-        hint={bearerToken
+        hint={connected
           ? `Build @${activeTarget}'s graph from their posts, or pull who's mentioning them.`
-          : 'Set your X key first (header → X Key).'}
+          : 'Connect your X account first (header → Connect X).'}
         actionLabel="Gather from posts"
         onAction={() => runRefresh('posts')}
         busy={refreshing === 'posts'}
-        disabled={!bearerToken}
+        disabled={!connected}
         error={refreshError}
         secondaryLabel="+ Mentions"
         onSecondary={() => runRefresh('mentions')}
@@ -125,8 +125,8 @@ export function NetworkGraph() {
     const label = String(node.data.label)
     if (!label.startsWith('@') || node.id === report.profile!.id) return
     const username = label.slice(1)
-    if (!bearerToken) {
-      alert('Set your X API key (header → X Key) to add new targets from the network graph.')
+    if (!connected) {
+      alert('Connect your X account (header → Connect X) to add new targets from the network graph.')
       return
     }
     if (confirm(`Add @${username} as a new intel target?`)) {
@@ -169,7 +169,7 @@ export function NetworkGraph() {
         )}
         <button
           onClick={() => runRefresh('mentions')}
-          disabled={!!refreshing || !bearerToken}
+          disabled={!!refreshing || !connected}
           title="Pull who's mentioning this target"
           className="text-[10px] font-medium px-2 py-1 rounded-md border border-[var(--color-border-soft)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
@@ -178,7 +178,7 @@ export function NetworkGraph() {
         <SectionRefresh
           onClick={() => runRefresh('posts')}
           busy={refreshing === 'posts'}
-          disabled={!bearerToken}
+          disabled={!connected}
           lastGatheredIso={lastGathered}
           error={refreshError}
         />

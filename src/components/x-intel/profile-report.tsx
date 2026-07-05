@@ -2,7 +2,7 @@ import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useXIntelStore } from '../../stores/x-intel-store'
-import { useXAuthStore } from '../../stores/x-intel-auth-store'
+import { useXSelfStore } from '../../stores/x-self-store'
 import { generateReport, runGather } from '../../lib/x-intel/orchestrate'
 import { computeAnalytics } from '../../lib/x-intel/analytics'
 import { splitEvidence, postUrl, profileUrl } from '../../lib/x-intel/evidence'
@@ -528,14 +528,14 @@ export function ProfileReport() {
   const deleteReport = useXIntelStore((s) => s.deleteReport)
   const setActiveSubTab = useXIntelStore((s) => s.setActiveSubTab)
   const addTarget = useXIntelStore((s) => s.addTarget)
-  const bearerToken = useXAuthStore((s) => s.bearerToken)
+  const connected = useXSelfStore((s) => s.connected)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Add an engaged account (from mentions/replies) as a new intel target.
   const addAsTarget = (username: string) => {
-    if (!bearerToken) {
-      alert('Set your X API key (header → X Key) to add targets from the network.')
+    if (!connected) {
+      alert('Connect your X account (header → Connect X) to add targets from the network.')
       return
     }
     if (confirm(`Add @${username} as a new intel target?`)) {
@@ -625,7 +625,7 @@ export function ProfileReport() {
           <p className="text-[11px] text-white/25 max-w-xs">
             {hasPosts
               ? 'Generate a comprehensive intelligence report from the gathered posts.'
-              : bearerToken ? 'Gather posts from the target rail first, then generate a report.' : 'Set your X key, gather posts, then generate a report.'}
+              : connected ? 'Gather posts from the target rail first, then generate a report.' : 'Connect your X account, gather posts, then generate a report.'}
           </p>
         </div>
       )}

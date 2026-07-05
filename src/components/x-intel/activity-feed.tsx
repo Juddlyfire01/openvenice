@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useXIntelStore } from '../../stores/x-intel-store'
-import { useXAuthStore } from '../../stores/x-intel-auth-store'
+import { useXSelfStore } from '../../stores/x-self-store'
 import { refreshPosts } from '../../lib/x-intel/orchestrate'
 import { SectionRefresh, SectionEmpty } from './section-actions'
 import type { Post } from '../../lib/x-intel/types'
@@ -13,7 +13,7 @@ export function ActivityFeed() {
   const activeTarget = useXIntelStore((s) => s.activeTarget)
   const report = useXIntelStore((s) => (s.activeTarget ? s.reports[s.activeTarget] : undefined))
   const updateReport = useXIntelStore((s) => s.updateReport)
-  const bearerToken = useXAuthStore((s) => s.bearerToken)
+  const connected = useXSelfStore((s) => s.connected)
   const [filter, setFilter] = useState<KindFilter>('all')
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
@@ -43,11 +43,11 @@ export function ActivityFeed() {
     return (
       <SectionEmpty
         title="No posts gathered yet"
-        hint={bearerToken ? `Fetch @${activeTarget}'s recent posts (up to 50 per pull).` : 'Set your X key first (header → X Key).'}
+        hint={connected ? `Fetch @${activeTarget}'s recent posts (up to 50 per pull).` : 'Connect your X account first (header → Connect X).'}
         actionLabel="Gather posts"
         onAction={runRefresh}
         busy={refreshing}
-        disabled={!bearerToken}
+        disabled={!connected}
         error={refreshError}
       />
     )
@@ -86,7 +86,7 @@ export function ActivityFeed() {
         <SectionRefresh
           onClick={runRefresh}
           busy={refreshing}
-          disabled={!bearerToken}
+          disabled={!connected}
           lastGatheredIso={lastGathered}
           error={refreshError}
         />

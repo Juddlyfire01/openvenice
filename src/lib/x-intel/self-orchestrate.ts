@@ -7,16 +7,33 @@ import { getSelfSession } from './self-client'
 import { deriveEdges } from './normalize'
 import { computeAnalytics, computeDelta, postDateRange } from './analytics'
 import { synthesizeReport } from './synthesize'
-import { mergePosts, newReportId } from '../../stores/x-intel-store'
+import { mergePosts, newReportId, useXIntelStore } from '../../stores/x-intel-store'
 import { useXSelfStore } from '../../stores/x-self-store'
+import { runGather } from './orchestrate'
+import { DEFAULT_TARGET } from './fields'
 import { DEFAULT_SYNTHESIS_SETTINGS } from './types'
 import type { IntelReportSnapshot, ChangeSummary } from './types'
 
-/** Probe the server session and reflect it into the store. */
+/**
+ * Probe the server session and reflect it into the store. On the first
+ * successful connect with an empty target list, seed the default target
+ * (@AskVenice) so the Targets tab isn't empty — mirroring the old behaviour
+ * that used to run on bearer-token connect. The seed gather authenticates
+ * through the same OAuth proxy as everything else.
+ */
 export async function refreshSelfSession(): Promise<boolean> {
   const { connected } = await getSelfSession()
   useXSelfStore.getState().setConnected(connected)
+  if (connected) seedDefaultTarget()
   return connected
+}
+
+/** Add @AskVenice as the first target (and gather it) when none exist yet. */
+function seedDefaultTarget(): void {
+  const intel = useXIntelStore.getState()
+  if (intel.targets.length > 0) return
+  intel.addTarget(DEFAULT_TARGET)
+  runGather(DEFAULT_TARGET).catch(() => { /* surfaced in the target rail */ })
 }
 
 /** Full gather of the connected user: profile → posts → bookmarks → likes → edges. */

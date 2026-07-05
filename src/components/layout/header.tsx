@@ -1,7 +1,8 @@
 import { useSettingsStore } from '../../stores/settings-store'
 import { useModels } from '../../hooks/use-models'
 import { useAuthStore } from '../../stores/auth-store'
-import { useXAuthStore } from '../../stores/x-intel-auth-store'
+import { useXSelfStore } from '../../stores/x-self-store'
+import { beginSelfLogin } from '../../lib/x-intel/self-client'
 import { Select } from '../ui/select'
 import { ConnectionPill } from '../ui/shared'
 
@@ -44,14 +45,13 @@ const noModelSelector = new Set(['video', 'workflows', 'playground', 'intel', 's
 
 interface Props {
   onOpenApiKey: () => void
-  onOpenXKey: () => void
   onOpenMobileSidebar?: () => void
 }
 
-export function Header({ onOpenApiKey, onOpenXKey, onOpenMobileSidebar }: Props) {
+export function Header({ onOpenApiKey, onOpenMobileSidebar }: Props) {
   const { activeTab, selectedModels, setSelectedModel } = useSettingsStore()
   const apiKey = useAuthStore((s) => s.apiKey)
-  const xBearer = useXAuthStore((s) => s.bearerToken)
+  const xConnected = useXSelfStore((s) => s.connected)
   const hasOwnSelector = noModelSelector.has(activeTab)
   const modelType = modelTypeMap[activeTab] || 'text'
   const { data: models } = useModels(hasOwnSelector ? undefined : modelType)
@@ -93,10 +93,10 @@ export function Header({ onOpenApiKey, onOpenXKey, onOpenMobileSidebar }: Props)
 
       {activeTab === 'intel' && (
         <ConnectionPill
-          connected={!!xBearer}
+          connected={xConnected}
           connectedLabel="X: Connected"
-          disconnectedLabel="Connect X key"
-          onClick={onOpenXKey}
+          disconnectedLabel="Connect X"
+          onClick={() => { if (!xConnected) beginSelfLogin() }}
         />
       )}
 

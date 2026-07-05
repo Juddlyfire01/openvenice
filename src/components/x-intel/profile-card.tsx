@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useXIntelStore } from '../../stores/x-intel-store'
-import { useXAuthStore } from '../../stores/x-intel-auth-store'
+import { useXSelfStore } from '../../stores/x-self-store'
 import { useModels } from '../../hooks/use-models'
 import { refreshProfile, runGather } from '../../lib/x-intel/orchestrate'
 import { linkify } from '../../lib/x-intel/linkify'
@@ -14,11 +14,11 @@ import { formatTokens, cn } from '../../lib/utils'
  */
 function BioText({ text }: { text: string }) {
   const addTarget = useXIntelStore((s) => s.addTarget)
-  const bearerToken = useXAuthStore((s) => s.bearerToken)
+  const connected = useXSelfStore((s) => s.connected)
 
   const addAsTarget = (username: string) => {
-    if (!bearerToken) {
-      alert('Set your X API key (header → X Key) to add targets from a bio mention.')
+    if (!connected) {
+      alert('Connect your X account (header → Connect X) to add targets from a bio mention.')
       return
     }
     if (confirm(`Add @${username} as a new intel target?`)) {
@@ -67,7 +67,7 @@ export function ProfileCard() {
   const activeTarget = useXIntelStore((s) => s.activeTarget)
   const report = useXIntelStore((s) => (s.activeTarget ? s.reports[s.activeTarget] : undefined))
   const updateReport = useXIntelStore((s) => s.updateReport)
-  const bearerToken = useXAuthStore((s) => s.bearerToken)
+  const connected = useXSelfStore((s) => s.connected)
   const { data: models } = useModels('text')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -101,11 +101,11 @@ export function ProfileCard() {
     return (
       <SectionEmpty
         title="No profile gathered yet"
-        hint={bearerToken ? `Fetch @${activeTarget}'s profile — one cheap user lookup.` : 'Set your X key first (header → X Key).'}
+        hint={connected ? `Fetch @${activeTarget}'s profile — one cheap user lookup.` : 'Connect your X account first (header → Connect X).'}
         actionLabel="Refresh profile"
         onAction={runRefresh}
         busy={refreshing}
-        disabled={!bearerToken}
+        disabled={!connected}
         error={refreshError}
       />
     )
@@ -145,7 +145,7 @@ export function ProfileCard() {
       <SectionRefresh
         onClick={runRefresh}
         busy={refreshing}
-        disabled={!bearerToken}
+        disabled={!connected}
         lastGatheredIso={report.refreshedAt?.profile ?? profile.gatheredAt}
         error={refreshError}
       />
