@@ -3,6 +3,7 @@
 @theme {
   --font-sans: "Inter", "InterVariable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", monospace;
+  --font-emoji: "Noto Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Apple Color Emoji", emoji;
 }
 
 /* Default theme = Venice (official brand palette). Overridden per-theme below. */
@@ -120,6 +121,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "ss01", "cv11";
+}
+
+.font-emoji {
+  font-family: var(--font-emoji);
 }
 
 ::selection { background: var(--color-accent-soft); color: var(--color-text-primary); }

@@ -1,7 +1,9 @@
+import { useRef } from 'react'
 import { useComposeStore } from '../../stores/compose-store'
 import { tweetLength } from '../../lib/compose/tweet-length'
 import { TWEET_LIMIT, LONGFORM_LIMIT, type PostSegment } from '../../lib/compose/types'
 import { CharRing } from './char-ring'
+import { FormatToolbar } from './format-toolbar'
 import { MediaAttachments } from './media-attachments'
 import { PollEditor } from './poll-editor'
 
@@ -14,6 +16,7 @@ interface SegmentEditorProps {
 }
 
 export function SegmentEditor({ context, segment, index, total, longform }: SegmentEditorProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const setSegmentText = useComposeStore((s) => s.setSegmentText)
   const removeSegment = useComposeStore((s) => s.removeSegment)
   const moveSegment = useComposeStore((s) => s.moveSegment)
@@ -47,12 +50,31 @@ export function SegmentEditor({ context, segment, index, total, longform }: Segm
         </div>
       )}
 
+      <FormatToolbar
+        value={segment.text}
+        onChange={(text) => setSegmentText(context, segment.id, text)}
+        textareaRef={textareaRef}
+      />
+
       <textarea
+        ref={textareaRef}
         value={segment.text}
         onChange={(e) => setSegmentText(context, segment.id, e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.shiftKey) {
+            e.preventDefault()
+            const el = e.currentTarget
+            const { selectionStart: start, selectionEnd: end, value } = el
+            const next = value.slice(0, start) + '\n' + value.slice(end)
+            setSegmentText(context, segment.id, next)
+            requestAnimationFrame(() => {
+              el.selectionStart = el.selectionEnd = start + 1
+            })
+          }
+        }}
         rows={Math.max(3, Math.ceil((segment.text.length || 1) / 60))}
         placeholder={index === 0 ? 'What do you want to post?' : 'Continue the thread…'}
-        className="w-full bg-transparent text-[13px] text-white/85 outline-none resize-none placeholder:text-[var(--color-text-placeholder)]"
+        className="w-full bg-transparent text-[13px] text-white/85 font-emoji outline-none resize-none placeholder:text-[var(--color-text-placeholder)] placeholder:font-sans"
       />
 
       <MediaAttachments context={context} segment={segment} />

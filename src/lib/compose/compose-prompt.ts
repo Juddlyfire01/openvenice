@@ -34,6 +34,7 @@ Rules for the block:
   - { "kind": "quote", "postId": "<id>", "username": "<handle>" } — only when quoting a specific post whose id you were given.
 - Do not invent post ids. If you don't have a real id from context, use { "kind": "original" }.
 - Match X conventions: natural voice, no hashtag spam, no "As an AI" preamble.
+- Post text is plain UTF-8 only — no Markdown (**bold**, _italic_, HTML). For emphasis use Unicode styled letters sparingly (mathematical bold/italic on A–Z/a–z). @mentions, #hashtags, $cashtags, plain https:// URLs, emojis, and line breaks are all valid. Do not use ** or __ markup.
 - Put your conversational reply (questions, options, rationale) BEFORE the block as normal prose. Never mention the block itself to the user.`
 
 export function buildComposeSystem(ctx: ComposeContext): string {

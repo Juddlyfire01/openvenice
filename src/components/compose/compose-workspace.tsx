@@ -3,7 +3,6 @@ import { useComposeStore, ME_CONTEXT, type XSearchMode } from '../../stores/comp
 import { useXIntelStore } from '../../stores/x-intel-store'
 import { useModels } from '../../hooks/use-models'
 import { pickComposeModel, modelSupportsXSearch } from '../../lib/compose/model'
-import { DEFAULT_SYNTHESIS_SETTINGS } from '../../lib/x-intel/types'
 import type { TargetContext } from '../../lib/compose/compose-prompt'
 import { ComposeChat } from './compose-chat'
 import { PostComposer } from './post-composer'
@@ -26,10 +25,10 @@ export function ComposeWorkspace() {
 
   const [copied, setCopied] = useState(false)
 
-  // Resolve a sensible default model once the list loads: Grok + x_search.
+  // Resolve default once the list loads: highest Grok w/ X search, then fallbacks.
   useEffect(() => {
     if (model || !models || models.length === 0) return
-    setModel(pickComposeModel(models) ?? models[0]?.id ?? DEFAULT_SYNTHESIS_SETTINGS.model)
+    setModel(pickComposeModel(models))
   }, [model, models, setModel])
 
   useEffect(() => {
