@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { VENICE_SERVER_FRONTED, VENICE_FRONTED_SENTINEL } from '../lib/venice-config'
 
 const SESSION_KEY = 'venice-auth'
 const ENCRYPTED_KEY = 'venice-auth-enc'
@@ -98,8 +99,11 @@ const initialHasEncrypted = (() => {
 })()
 
 export const useAuthStore = create<AuthState>()((set) => ({
-  apiKey: initialKey,
-  hasEncrypted: initialHasEncrypted,
+  // When server-fronted, Venice is powered by a shared server-side key, so we
+  // seed a sentinel: every `!!apiKey` availability gate passes and the connect
+  // UI stays hidden. The sentinel is never sent as a credential.
+  apiKey: VENICE_SERVER_FRONTED ? VENICE_FRONTED_SENTINEL : initialKey,
+  hasEncrypted: VENICE_SERVER_FRONTED ? false : initialHasEncrypted,
 
   setApiKey: async (key, remember) => {
     sessionStorage.setItem(SESSION_KEY, key)

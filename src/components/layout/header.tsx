@@ -3,6 +3,7 @@ import { useModels } from '../../hooks/use-models'
 import { useAuthStore } from '../../stores/auth-store'
 import { useXSelfStore } from '../../stores/x-self-store'
 import { beginSelfLogin } from '../../lib/x-intel/self-client'
+import { VENICE_SERVER_FRONTED } from '../../lib/venice-config'
 import { Select } from '../ui/select'
 import { ConnectionPill } from '../ui/shared'
 
@@ -100,12 +101,17 @@ export function Header({ onOpenApiKey, onOpenMobileSidebar }: Props) {
         />
       )}
 
-      <ConnectionPill
-        connected={!!apiKey}
-        connectedLabel="Connected"
-        disconnectedLabel="Connect API key"
-        onClick={onOpenApiKey}
-      />
+      {/* Venice key pill is only meaningful in bring-your-own-key mode. When the
+          app fronts a shared server-side key, there's nothing to connect, so we
+          hide it — leaving at most the single X indicator on the Intel tab. */}
+      {!VENICE_SERVER_FRONTED && (
+        <ConnectionPill
+          connected={!!apiKey}
+          connectedLabel="Connected"
+          disconnectedLabel="Connect API key"
+          onClick={onOpenApiKey}
+        />
+      )}
     </header>
   )
 }
