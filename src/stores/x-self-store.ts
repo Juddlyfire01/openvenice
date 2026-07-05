@@ -4,7 +4,8 @@
 // bearer token, and carries OAuth-only extras (bookmarks, likes).
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Profile, Post, Edge, IntelReportSnapshot } from '../lib/x-intel/types'
+import type { Profile, Post, Edge, IntelReportSnapshot, SynthesisSettings } from '../lib/x-intel/types'
+import { DEFAULT_SYNTHESIS_SETTINGS } from '../lib/x-intel/types'
 
 export interface SelfSectionsRefreshed {
   profile?: string
@@ -23,6 +24,7 @@ interface XSelfState {
   reportHistory: IntelReportSnapshot[]
   activeReportId: string | null
   refreshedAt: SelfSectionsRefreshed
+  synthesisSettings: SynthesisSettings
 
   setConnected: (connected: boolean) => void
   setProfile: (profile: Profile | null) => void
@@ -31,6 +33,7 @@ interface XSelfState {
   setLikes: (likes: Post[]) => void
   setEdges: (edges: Edge[]) => void
   markRefreshed: (section: keyof SelfSectionsRefreshed) => void
+  setSynthesisSettings: (patch: Partial<SynthesisSettings>) => void
   appendReport: (snapshot: IntelReportSnapshot) => void
   setActiveReport: (id: string) => void
   deleteReport: (id: string) => void
@@ -46,6 +49,7 @@ const EMPTY = {
   reportHistory: [] as IntelReportSnapshot[],
   activeReportId: null as string | null,
   refreshedAt: {} as SelfSectionsRefreshed,
+  synthesisSettings: DEFAULT_SYNTHESIS_SETTINGS,
 }
 
 export const useXSelfStore = create<XSelfState>()(
@@ -62,6 +66,9 @@ export const useXSelfStore = create<XSelfState>()(
       setEdges: (edges) => set({ edges }),
       markRefreshed: (section) =>
         set((s) => ({ refreshedAt: { ...s.refreshedAt, [section]: new Date().toISOString() } })),
+
+      setSynthesisSettings: (patch) =>
+        set((s) => ({ synthesisSettings: { ...s.synthesisSettings, ...patch } })),
 
       appendReport: (snapshot) =>
         set((s) => ({ reportHistory: [snapshot, ...s.reportHistory], activeReportId: snapshot.id })),
@@ -91,6 +98,7 @@ export const useXSelfStore = create<XSelfState>()(
         reportHistory: s.reportHistory,
         activeReportId: s.activeReportId,
         refreshedAt: s.refreshedAt,
+        synthesisSettings: s.synthesisSettings,
       }),
     },
   ),

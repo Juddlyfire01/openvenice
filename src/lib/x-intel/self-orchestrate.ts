@@ -13,7 +13,6 @@ import { useSettingsStore } from '../../stores/settings-store'
 import { toast } from '../../stores/toast-store'
 import { runGather } from './orchestrate'
 import { DEFAULT_TARGET } from './fields'
-import { DEFAULT_SYNTHESIS_SETTINGS } from './types'
 import type { IntelReportSnapshot, ChangeSummary } from './types'
 
 let sessionRefreshPromise: Promise<boolean> | null = null
@@ -130,21 +129,13 @@ export async function gatherSelf(opts: { maxResults?: number } = {}): Promise<vo
   store.setEdges(deriveEdges(profile.id, mergedPosts))
 }
 
-/** Refresh only the self profile (cheap identity/metrics refresh). */
-export async function refreshSelfProfile(): Promise<void> {
-  const store = useXSelfStore.getState()
-  const profile = await gatherSelfProfile()
-  store.setProfile(profile)
-  store.markRefreshed('profile')
-}
-
 /** Generate a full intelligence report over the connected user's own posts. */
 export async function generateSelfReport(): Promise<IntelReportSnapshot> {
   const state = useXSelfStore.getState()
   if (!state.profile) throw new Error('Load your profile first')
   if (state.posts.length === 0) throw new Error('Gather your posts first')
 
-  const settings = DEFAULT_SYNTHESIS_SETTINGS
+  const settings = state.synthesisSettings
   const analytics = computeAnalytics(state.profile, state.posts, state.edges)
   const prevSnapshot = state.reportHistory[0] ?? null
 

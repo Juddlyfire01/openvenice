@@ -3,7 +3,7 @@ import { deriveEdges } from './normalize'
 import { computeAnalytics, computeDelta, postDateRange } from './analytics'
 import { synthesizeReport } from './synthesize'
 import { mergePosts, useXIntelStore, newReportId, type RefreshedAt } from '../../stores/x-intel-store'
-import type { IntelReportSnapshot } from './types'
+import type { IntelReportSnapshot, Post } from './types'
 
 /**
  * Build the next refreshedAt map for a report, stamping the given section(s) with
@@ -20,8 +20,11 @@ function markRefreshed(username: string, ...sections: (keyof RefreshedAt)[]): Re
 }
 
 /**
- * Full gather cycle for a target: profile → posts (incremental if we have
- * a mostRecentPostId) → local edge derivation. Updates the store and cost meter.
+ * The "everything" pull for a target: profile → outbound posts (incremental if
+ * we have a mostRecentPostId) + inbound mentions → local edge derivation.
+ * Updates the store and cost meter. Backs the Profile tab's Refresh button and
+ * the initial gather when a target is added. A mentions hiccup is non-fatal —
+ * posts still land — so the core timeline is never lost to an inbound failure.
  */
 export async function runGather(username: string, opts: { backfill?: number } = {}): Promise<void> {
   const { updateReport, addCost } = useXIntelStore.getState()
@@ -34,23 +37,24 @@ export async function runGather(username: string, opts: { backfill?: number } = 
   const profile = profileResult.data
   updateReport(username, { profile })
 
-  // 2. Posts — incremental via since_id when we have prior posts
+  // 2. Posts (outbound, incremental via since_id) + mentions (inbound), in parallel
   // Re-read the current state to avoid a stale snapshot
   const currentReport = useXIntelStore.getState().reports[username]
   const sinceId = currentReport && currentReport.posts.length > 0
     ? currentReport.profile?.mostRecentPostId ?? undefined
     : undefined
-  const postsResult = await gatherPosts(profile.id, {
-    sinceId,
-    maxResults: opts.backfill ?? 50,
-  })
+  const [postsResult, mentionsResult] = await Promise.all([
+    gatherPosts(profile.id, { sinceId, maxResults: opts.backfill ?? 50 }),
+    gatherMentions(profile.id).catch(() => ({ data: [] as Post[], cost: 0 })),
+  ])
   addCost(username, postsResult.cost)
+  addCost(username, mentionsResult.cost)
 
   // Re-read posts right before merging to avoid stale snapshot from concurrent gathers
   const existingPosts = useXIntelStore.getState().reports[username]?.posts ?? []
-  const merged = mergePosts(existingPosts, postsResult.data)
+  const merged = mergePosts(mergePosts(existingPosts, postsResult.data), mentionsResult.data)
 
-  // 3. Edges — recomputed locally from the full merged post set, free
+  // 3. Edges — recomputed locally from the full merged post set (outbound + inbound), free
   const edges = deriveEdges(profile.id, merged)
 
   updateReport(username, { posts: merged, edges, refreshedAt: markRefreshed(username, 'profile', 'feed', 'network') })

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useXIntelStore } from '../../stores/x-intel-store'
 import { useXSelfStore } from '../../stores/x-self-store'
-import { useModels } from '../../hooks/use-models'
 import { refreshProfile, runGather } from '../../lib/x-intel/orchestrate'
+import { selfLogout } from '../../lib/x-intel/self-client'
 import { linkify } from '../../lib/x-intel/linkify'
 import { ensureProfileShape, profileNeedsLinkRefresh } from '../../lib/x-intel/normalize'
-import { SectionRefresh, SectionEmpty } from './section-actions'
-import { formatTokens, cn } from '../../lib/utils'
+import { computeActivity } from '../../lib/x-intel/activity'
+import { ProfileOverview } from './profile-overview'
+import type { Profile } from '../../lib/x-intel/types'
 
 /**
  * Render a bio with clickable URLs, @mentions and #hashtags. URLs and hashtags
@@ -60,17 +61,15 @@ function BioText({ text, bioUrls }: { text: string; bioUrls?: { url: string; exp
 }
 
 /**
- * Left overview column of the Profile sub-tab: identity, metrics, and the
- * per-target synthesis settings that feed report generation. The rich report
- * itself lives in the right pane (ProfileReport). Kept intentionally compact.
+ * Left overview column of the Profile sub-tab for a target. Delegates layout to
+ * the shared ProfileOverview so targets and the self Profile tab stay identical;
+ * this wrapper only supplies target-specific data sources and handlers.
  */
 export function ProfileCard() {
   const activeTarget = useXIntelStore((s) => s.activeTarget)
   const report = useXIntelStore((s) => (s.activeTarget ? s.reports[s.activeTarget] : undefined))
   const updateReport = useXIntelStore((s) => s.updateReport)
   const connected = useXSelfStore((s) => s.connected)
-  const { data: models } = useModels('text')
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
   const linkRefreshAttempted = useRef<Set<string>>(new Set())
@@ -80,12 +79,17 @@ export function ProfileCard() {
     setRefreshing(true)
     setRefreshError(null)
     try {
-      await refreshProfile(activeTarget)
+      await runGather(activeTarget)
     } catch (e) {
       setRefreshError(e instanceof Error ? e.message : 'Refresh failed')
     } finally {
       setRefreshing(false)
     }
+  }
+
+  const disconnect = async () => {
+    await selfLogout()
+    useXSelfStore.getState().reset()
   }
 
   const profile = report?.profile ? ensureProfileShape(report.profile) : null
@@ -104,149 +108,23 @@ export function ProfileCard() {
     return <div className="flex items-center justify-center h-full text-[12px] text-white/15">No target selected</div>
   }
 
-  const { synthesisSettings, reportHistory } = report
-  const latest = reportHistory[0] ?? null
-
-  const setSetting = (patch: Partial<typeof synthesisSettings>) => {
-    updateReport(activeTarget, { synthesisSettings: { ...synthesisSettings, ...patch } })
-  }
-
-  if (!profile) {
-    return (
-      <SectionEmpty
-        title="No profile gathered yet"
-        hint={connected ? `Fetch @${activeTarget}'s profile — one cheap user lookup.` : 'Connect your X account first (header → Connect X).'}
-        actionLabel="Refresh profile"
-        onAction={runRefresh}
-        busy={refreshing}
-        disabled={!connected}
-        error={refreshError}
-      />
-    )
-  }
+  const { synthesisSettings } = report
+  const activity = profile ? computeActivity(profile, report.posts) : null
 
   return (
-    <div className="h-full overflow-y-auto px-5 py-4 space-y-4">
-      {/* Header strip */}
-      <div className="flex items-start gap-3">
-        {profile.avatarUrl && <img src={profile.avatarUrl} alt="" className="w-12 h-12 rounded-full" />}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <h2 className="text-[15px] font-semibold text-white/90 truncate">{profile.displayName}</h2>
-            {profile.verified.type && (
-              <span
-                title={`Verified (${profile.verified.type})`}
-                className={cn(
-                  'text-[9px] px-1.5 py-px rounded-full font-medium',
-                  profile.verified.type === 'blue' && 'bg-blue-400/15 text-blue-300/70',
-                  profile.verified.type === 'business' && 'bg-yellow-400/15 text-yellow-300/70',
-                  profile.verified.type === 'government' && 'bg-gray-400/15 text-gray-300/70',
-                )}
-              >
-                {profile.verified.type}
-              </span>
-            )}
-          </div>
-          <div className="text-[11px] text-white/25">
-            @{profile.username}
-            {profile.location && <> · {profile.location}</>}
-            {profile.website && (
-              <>
-                {' · '}
-                <a href={profile.website.href} target="_blank" rel="noopener noreferrer nofollow" className="text-[var(--color-accent)] hover:underline">
-                  {profile.website.display}
-                </a>
-              </>
-            )}
-            {profile.accountCreated && <> · joined {new Date(profile.accountCreated).getFullYear()}</>}
-          </div>
-          {profile.bio && <BioText text={profile.bio} bioUrls={profile.bioUrls} />}
-        </div>
-      </div>
-
-      <SectionRefresh
-        onClick={runRefresh}
-        busy={refreshing}
-        disabled={!connected}
-        lastGatheredIso={report.refreshedAt?.profile ?? profile.gatheredAt}
-        error={refreshError}
-      />
-
-      {/* Metrics */}
-      <div className="grid grid-cols-2 gap-2 text-[11px] text-white/30 font-mono">
-        <span><b className="text-white/60">{formatTokens(profile.metrics.followers)}</b> followers</span>
-        <span><b className="text-white/60">{formatTokens(profile.metrics.following)}</b> following</span>
-        <span><b className="text-white/60">{formatTokens(profile.metrics.posts)}</b> posts</span>
-        <span><b className="text-white/60">{formatTokens(profile.metrics.listed)}</b> listed</span>
-      </div>
-
-      {/* Latest report highlights (glance) */}
-      {latest && (
-        <div className="pt-3 border-t border-white/[0.04] space-y-2">
-          <span className="text-[10px] font-medium text-white/15 uppercase tracking-[0.08em]">Latest report</span>
-          {latest.narrative.themes.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {latest.narrative.themes.slice(0, 6).map((t) => (
-                <span key={t.name} className="text-[10px] px-2 py-[2px] rounded-full bg-white/[0.05] text-white/50">{t.name}</span>
-              ))}
-            </div>
-          )}
-          {latest.narrative.register.description && (
-            <p className="text-[11px] text-white/45">{latest.narrative.register.description}</p>
-          )}
-          <p className="text-[10px] text-white/20 font-mono">
-            {latest.analytics.cadence.pattern} · {latest.analytics.cadence.avgPerDay}/day · {reportHistory.length} report{reportHistory.length === 1 ? '' : 's'} on file
-          </p>
-        </div>
-      )}
-
-      {/* Synthesis settings (feed report generation) */}
-      <div className="pt-3 border-t border-white/[0.04]">
-        <button
-          onClick={() => setSettingsOpen((o) => !o)}
-          className="flex items-center gap-1.5 text-[10px] font-medium text-white/25 hover:text-white/50 uppercase tracking-[0.08em] transition-colors"
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.01a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h.01a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.01a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>
-          Synthesis settings
-        </button>
-        {settingsOpen && (
-          <div className="mt-2 border border-[var(--color-border-faint)] rounded-lg p-3 bg-[var(--color-bg-raised)] space-y-3">
-            <label className="block text-[11px] text-white/40">
-              Context cap: <b className="text-white/70 font-mono">{synthesisSettings.contextCap}</b> posts
-              <input
-                type="range" min={10} max={200} step={5}
-                value={synthesisSettings.contextCap}
-                onChange={(e) => setSetting({ contextCap: Number(e.target.value) })}
-                className="w-full accent-white mt-1"
-              />
-            </label>
-            <label className="block text-[11px] text-white/40">
-              Temperature: <b className="text-white/70 font-mono">{synthesisSettings.temperature.toFixed(1)}</b>
-              <input
-                type="range" min={0} max={1} step={0.1}
-                value={synthesisSettings.temperature}
-                onChange={(e) => setSetting({ temperature: Number(e.target.value) })}
-                className="w-full accent-white mt-1"
-              />
-            </label>
-            <label className="block text-[11px] text-white/40">
-              Model
-              <select
-                value={synthesisSettings.model}
-                onChange={(e) => setSetting({ model: e.target.value })}
-                className="w-full mt-1 bg-[var(--color-bg-input)] border border-[var(--color-border-soft)] rounded-md px-2 py-1.5 text-[11px] text-[var(--color-text-secondary)] outline-none"
-              >
-                {(models ?? []).map((m) => (
-                  <option key={m.id} value={m.id}>{m.model_spec?.name || m.id}</option>
-                ))}
-                {!models?.some((m) => m.id === synthesisSettings.model) && (
-                  <option value={synthesisSettings.model}>{synthesisSettings.model}</option>
-                )}
-              </select>
-            </label>
-          </div>
-        )}
-      </div>
-    </div>
+    <ProfileOverview
+      profile={profile}
+      connected={connected}
+      refreshing={refreshing}
+      refreshError={refreshError}
+      lastGatheredIso={report.refreshedAt?.profile ?? profile?.gatheredAt}
+      onRefresh={runRefresh}
+      emptyHint={connected ? `Fetch @${activeTarget}'s profile, posts & network in one pull.` : 'Connect your X account first (header → Connect X).'}
+      renderBio={(p: Profile) => <BioText text={p.bio ?? ''} bioUrls={p.bioUrls} />}
+      activity={activity}
+      synthesisSettings={synthesisSettings}
+      onSynthesisChange={(patch) => updateReport(activeTarget, { synthesisSettings: { ...synthesisSettings, ...patch } })}
+      onDisconnect={disconnect}
+    />
   )
 }

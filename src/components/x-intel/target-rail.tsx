@@ -105,14 +105,6 @@ export function TargetRail() {
                   </div>
                 </div>
                 <button
-                  onClick={(e) => { e.stopPropagation(); gather(t) }}
-                  disabled={busy === t}
-                  title="Re-gather"
-                  className="opacity-0 group-hover:opacity-100 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-all shrink-0 p-0.5 disabled:opacity-30"
-                >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 11-2.6-6.4" /><polyline points="21 3 21 9 15 9" /></svg>
-                </button>
-                <button
                   onClick={(e) => { e.stopPropagation(); removeTarget(t) }}
                   title="Remove"
                   className="opacity-0 group-hover:opacity-100 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-all shrink-0 p-0.5"

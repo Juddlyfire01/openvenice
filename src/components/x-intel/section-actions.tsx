@@ -27,25 +27,45 @@ const RefreshIcon = ({ spinning }: { spinning?: boolean }) => (
  * section was last gathered and surfaces inline errors. Single source of truth so
  * Profile / Feed / Network refresh affordances stay identical.
  */
-export function SectionRefresh({ onClick, busy, disabled, lastGatheredIso, error, label = 'Refresh' }: {
+const refreshBtnCls =
+  'flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-md border border-white/[0.08] text-white/55 hover:text-white/85 hover:border-white/[0.2] transition-colors disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 shrink-0'
+
+export function SectionRefresh({ onClick, busy, disabled, lastGatheredIso, error, label = 'Refresh', layout = 'compact' }: {
   onClick: () => void
   busy?: boolean
   disabled?: boolean
   lastGatheredIso?: string
   error?: string | null
   label?: string
+  /** `compact` = stacked, right-aligned (feed/network). `bar` = full-width row (profile card). */
+  layout?: 'compact' | 'bar'
 }) {
+  const btn = (
+    <button
+      onClick={onClick}
+      disabled={busy || disabled}
+      title={disabled ? 'Connect X first' : `Last refreshed ${relativeTime(lastGatheredIso)}`}
+      className={refreshBtnCls}
+    >
+      <RefreshIcon spinning={busy} />
+      {busy ? 'Refreshing…' : label}
+    </button>
+  )
+
+  if (layout === 'bar') {
+    return (
+      <div className="flex items-center justify-between gap-3 w-full">
+        {error
+          ? <span className="text-[10px] text-red-400/70 min-w-0">{error}</span>
+          : <span className="text-[10px] text-white/25 font-mono truncate">Updated {relativeTime(lastGatheredIso)}</span>}
+        {btn}
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-end gap-0.5 shrink-0">
-      <button
-        onClick={onClick}
-        disabled={busy || disabled}
-        title={disabled ? 'Set your X key first' : `Last refreshed ${relativeTime(lastGatheredIso)}`}
-        className="flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-md border border-white/[0.08] text-white/55 hover:text-white/85 hover:border-white/[0.2] transition-colors disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
-      >
-        <RefreshIcon spinning={busy} />
-        {busy ? 'Refreshing…' : label}
-      </button>
+      {btn}
       {error
         ? <span className="text-[9px] text-red-400/70">{error}</span>
         : <span className="text-[9px] text-white/20 font-mono">updated {relativeTime(lastGatheredIso)}</span>}
