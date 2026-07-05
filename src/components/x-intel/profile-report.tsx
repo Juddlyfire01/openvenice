@@ -226,7 +226,7 @@ function HourHistogram({ hours }: { hours: number[] }) {
   )
 }
 
-function AnalyticsPanels({ a, posts, onAddTarget }: { a: ReportAnalytics; posts: Post[]; onAddTarget: (u: string) => void }) {
+export function AnalyticsPanels({ a, posts, onAddTarget }: { a: ReportAnalytics; posts: Post[]; onAddTarget: (u: string) => void }) {
   const f = a.fundamentals
   const e = a.engagement
   const c = a.composition
@@ -319,7 +319,7 @@ function AnalyticsPanels({ a, posts, onAddTarget }: { a: ReportAnalytics; posts:
   )
 }
 
-function ChangeSummaryPanel({ change }: { change: ChangeSummary }) {
+export function ChangeSummaryPanel({ change }: { change: ChangeSummary }) {
   const shifts = change.metricShifts.filter((m) => Math.abs(m.deltaPct) >= 1)
   return (
     <section className="rounded-lg border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/[0.04] p-3 space-y-2">
@@ -356,7 +356,7 @@ function ChangeSummaryPanel({ change }: { change: ChangeSummary }) {
   )
 }
 
-function NarrativePanels({ snapshot, posts, onJumpToPost }: {
+export function NarrativePanels({ snapshot, posts, onJumpToPost }: {
   snapshot: IntelReportSnapshot
   posts: Post[]
   onJumpToPost: () => void
@@ -483,7 +483,7 @@ function NarrativePanels({ snapshot, posts, onJumpToPost }: {
   )
 }
 
-function ReportTimeline({ history, activeId, onSelect, onDelete }: {
+export function ReportTimeline({ history, activeId, onSelect, onDelete }: {
   history: IntelReportSnapshot[]
   activeId: string | null
   onSelect: (id: string) => void

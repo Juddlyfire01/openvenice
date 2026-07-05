@@ -80,12 +80,14 @@ export interface IntelReport {
 }
 
 export type IntelSubTab = 'profile' | 'network' | 'feed' | 'draft'
+export type IntelTopTab = 'me' | 'targets'
 
 interface XIntelState {
   targets: string[]
   reports: Record<string, IntelReport>
   activeTarget: string | null
   activeSubTab: IntelSubTab
+  activeTopTab: IntelTopTab
   sessionCost: number
   /** Persisted all-time spend across all targets (survives target removal). */
   lifetimeTotal: number
@@ -96,6 +98,7 @@ interface XIntelState {
   removeTarget: (username: string) => void
   setActiveTarget: (username: string | null) => void
   setActiveSubTab: (tab: IntelSubTab) => void
+  setActiveTopTab: (tab: IntelTopTab) => void
   updateReport: (username: string, patch: Partial<IntelReport>) => void
   addCost: (username: string, cost: number) => void
   setDefaultSynthesisSettings: (s: SynthesisSettings) => void
@@ -127,6 +130,7 @@ export const useXIntelStore = create<XIntelState>()(
       reports: {},
       activeTarget: null,
       activeSubTab: 'profile',
+      activeTopTab: 'me',
       sessionCost: 0,
       lifetimeTotal: 0,
       defaultSynthesisSettings: DEFAULT_SYNTHESIS_SETTINGS,
@@ -224,6 +228,7 @@ export const useXIntelStore = create<XIntelState>()(
 
       setActiveTarget: (username) => set({ activeTarget: username }),
       setActiveSubTab: (tab) => set({ activeSubTab: tab }),
+      setActiveTopTab: (tab) => set({ activeTopTab: tab }),
 
       updateReport: (username, patch) => {
         set((s) => {
