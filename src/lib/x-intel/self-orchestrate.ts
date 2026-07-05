@@ -9,31 +9,93 @@ import { computeAnalytics, computeDelta, postDateRange } from './analytics'
 import { synthesizeReport } from './synthesize'
 import { mergePosts, newReportId, useXIntelStore } from '../../stores/x-intel-store'
 import { useXSelfStore } from '../../stores/x-self-store'
+import { useSettingsStore } from '../../stores/settings-store'
+import { toast } from '../../stores/toast-store'
 import { runGather } from './orchestrate'
 import { DEFAULT_TARGET } from './fields'
 import { DEFAULT_SYNTHESIS_SETTINGS } from './types'
 import type { IntelReportSnapshot, ChangeSummary } from './types'
 
-/**
- * Probe the server session and reflect it into the store. On the first
- * successful connect with an empty target list, seed the default target
- * (@AskVenice) so the Targets tab isn't empty — mirroring the old behaviour
- * that used to run on bearer-token connect. The seed gather authenticates
- * through the same OAuth proxy as everything else.
- */
-export async function refreshSelfSession(): Promise<boolean> {
+let sessionRefreshPromise: Promise<boolean> | null = null
+let oauthBootstrapPromise: ReturnType<typeof runOAuthBootstrap> | null = null
+
+async function probeSelfSession(): Promise<boolean> {
   const { connected } = await getSelfSession()
   useXSelfStore.getState().setConnected(connected)
   if (connected) seedDefaultTarget()
   return connected
 }
 
+/**
+ * Probe the server session and reflect it into the store. Concurrent callers
+ * share one in-flight request so IntelView + SelfProfileView cannot race and
+ * overwrite each other with stale disconnected results.
+ */
+export function refreshSelfSession(): Promise<boolean> {
+  sessionRefreshPromise ??= probeSelfSession().finally(() => {
+    sessionRefreshPromise = null
+  })
+  return sessionRefreshPromise
+}
+
+export interface OAuthBootstrapResult {
+  connected: boolean
+  oauthReturn: boolean
+  oauthError: string | null
+}
+
+/**
+ * Run once on app load: reconcile the OAuth session, surface callback errors,
+ * switch to Intel after a successful connect, and strip ?x_connected / ?x_error
+ * from the URL regardless of which tab is active.
+ */
+export function bootstrapXOAuthReturn(): Promise<OAuthBootstrapResult> {
+  oauthBootstrapPromise ??= runOAuthBootstrap()
+  return oauthBootstrapPromise
+}
+
+async function runOAuthBootstrap(): Promise<OAuthBootstrapResult> {
+  const params = new URLSearchParams(window.location.search)
+  const oauthError = params.get('x_error')
+  const oauthReturn = params.get('x_connected') === '1' || !!oauthError
+
+  let connected = false
+  try {
+    connected = await refreshSelfSession()
+  } catch {
+    connected = false
+  }
+
+  if (oauthReturn) {
+    window.history.replaceState({}, '', window.location.pathname)
+  }
+
+  if (oauthError) {
+    toast.error('X connect failed', oauthError)
+  } else if (oauthReturn && connected) {
+    useSettingsStore.getState().setActiveTab('intel')
+    toast.success('Connected to X')
+  } else if (oauthReturn && !connected) {
+    toast.error('X connect failed', 'Session could not be established after redirect.')
+  }
+
+  return { connected, oauthReturn, oauthError }
+}
+
 /** Add @AskVenice as the first target (and gather it) when none exist yet. */
 function seedDefaultTarget(): void {
-  const intel = useXIntelStore.getState()
-  if (intel.targets.length > 0) return
-  intel.addTarget(DEFAULT_TARGET)
-  runGather(DEFAULT_TARGET).catch(() => { /* surfaced in the target rail */ })
+  const trySeed = () => {
+    const intel = useXIntelStore.getState()
+    if (intel.targets.length > 0) return
+    intel.addTarget(DEFAULT_TARGET)
+    runGather(DEFAULT_TARGET).catch(() => { /* surfaced in the target rail */ })
+  }
+
+  if (useXIntelStore.persist.hasHydrated()) {
+    trySeed()
+  } else {
+    useXIntelStore.persist.onFinishHydration(trySeed)
+  }
 }
 
 /** Full gather of the connected user: profile → posts → bookmarks → likes → edges. */

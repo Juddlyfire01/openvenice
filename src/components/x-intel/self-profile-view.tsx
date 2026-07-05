@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useXSelfStore } from '../../stores/x-self-store'
 import {
   refreshSelfSession, gatherSelf, refreshSelfProfile,
@@ -62,23 +62,6 @@ export function SelfProfileView() {
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const probed = useRef(false)
-
-  // On mount: reconcile with the server session, and surface OAuth callback
-  // status from the redirect query (?x_connected / ?x_error).
-  useEffect(() => {
-    if (probed.current) return
-    probed.current = true
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('x_error')) setError(`Connect failed: ${params.get('x_error')}`)
-    refreshSelfSession().then((isConnected) => {
-      if (isConnected && !useXSelfStore.getState().profile) void runGather()
-      // Clean the OAuth query params from the URL bar.
-      if (params.get('x_connected') || params.get('x_error')) {
-        window.history.replaceState({}, '', window.location.pathname)
-      }
-    })
-  }, [])
 
   const runGather = async () => {
     setBusy(true); setError(null)
@@ -86,6 +69,20 @@ export function SelfProfileView() {
     catch (e) { setError(e instanceof Error ? e.message : 'Gather failed') }
     finally { setBusy(false) }
   }
+
+  // After the shared session probe (app bootstrap or Intel mount), sync profile data.
+  useEffect(() => {
+    let cancelled = false
+    void refreshSelfSession().then((isConnected) => {
+      if (cancelled || !isConnected || useXSelfStore.getState().profile) return
+      setBusy(true)
+      setError(null)
+      gatherSelf()
+        .catch((e) => setError(e instanceof Error ? e.message : 'Gather failed'))
+        .finally(() => { if (!cancelled) setBusy(false) })
+    })
+    return () => { cancelled = true }
+  }, [])
 
   const runProfileRefresh = async () => {
     setBusy(true); setError(null)

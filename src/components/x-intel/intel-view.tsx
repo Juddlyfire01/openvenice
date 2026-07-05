@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useXIntelStore } from '../../stores/x-intel-store'
 import { TargetRail } from './target-rail'
 import { ActivityFeed } from './activity-feed'
@@ -34,23 +34,19 @@ export function IntelView() {
     { id: 'draft' as const, label: 'Post' },
   ]
 
-  const ranWatch = useRef(false)
   useEffect(() => {
-    if (ranWatch.current) return
-    ranWatch.current = true
-    // Reconcile the OAuth session once for the whole Intel view. Both the
-    // Profile tab and target analysis depend on `connected`; only after it's
-    // confirmed do we auto-run watched-target gathers (which now authenticate
-    // through the same OAuth proxy).
-    refreshSelfSession()
+    let cancelled = false
+    // Shares the app-level session probe; auto-refresh watched targets once connected.
+    void refreshSelfSession()
       .then((isConnected) => {
-        if (!isConnected) return
+        if (cancelled || !isConnected) return
         const { targets, reports } = useXIntelStore.getState()
         for (const t of targets) {
           if (reports[t]?.watch) runGather(t).catch(() => { /* surfaced on manual gather */ })
         }
       })
       .catch(() => { /* session probe failure = treated as disconnected */ })
+    return () => { cancelled = true }
   }, [])
 
   return (

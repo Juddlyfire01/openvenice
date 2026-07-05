@@ -15,6 +15,7 @@ import { ErrorBoundary } from './components/ui/error-boundary'
 import { Toaster } from './components/ui/toaster'
 import { SettingsView } from './components/settings/settings-view'
 import { useApplyAppearance } from './hooks/use-apply-appearance'
+import { useXOAuthBootstrap } from './hooks/use-x-oauth-bootstrap'
 
 const LazyWorkflowsView = lazy(() => import('./components/workflows/workflows-view').then((m) => ({ default: m.WorkflowsView })))
 function WorkflowsView() {
@@ -81,6 +82,7 @@ export function App() {
   }, [setActiveTab])
 
   useApplyAppearance()
+  useXOAuthBootstrap()
 
   return (
     <>

@@ -15,7 +15,7 @@ const PROXY_BASE = '/api/x/proxy'
 /** Whether the user has a live OAuth session (connected their own account). */
 export async function getSelfSession(): Promise<{ connected: boolean }> {
   try {
-    const res = await fetch('/api/x/session', { credentials: 'same-origin' })
+    const res = await fetch('/api/x/session', { credentials: 'same-origin', cache: 'no-store' })
     if (!res.ok) return { connected: false }
     return (await res.json()) as { connected: boolean }
   } catch {
