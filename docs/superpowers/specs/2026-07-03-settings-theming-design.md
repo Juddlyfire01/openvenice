@@ -4,7 +4,7 @@ _Date: 2026-07-03_
 
 ## Purpose
 
-Add a Cursor-style settings experience to OpenVenice: a settings cog pinned to
+Add a Cursor-style settings experience to OVX: a settings cog pinned to
 the bottom-left of the sidebar that opens a dedicated Settings screen in the main
 area, with a left-hand category list (Profile, Display). The primary goal is
 **customisation and variable control** — starting with colour themes, zoom, and

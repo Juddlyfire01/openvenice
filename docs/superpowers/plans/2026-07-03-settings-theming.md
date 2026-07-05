@@ -811,7 +811,7 @@ export function ProfileSection() {
         </div>
         <div className="flex flex-col">
           <span className="text-[15px] font-semibold text-[var(--color-text-primary)]">
-            {profileName.trim() || 'OpenVenice user'}
+            {profileName.trim() || 'OVX user'}
           </span>
           <span className="text-[12px] text-[var(--color-text-tertiary)]">Local profile</span>
         </div>

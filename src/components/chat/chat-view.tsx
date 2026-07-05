@@ -7,7 +7,7 @@ import { useAuthStore } from '../../stores/auth-store'
 import { MessageBubble } from './message-bubble'
 import { ChatInput } from './chat-input'
 import { VeniceParams } from './venice-params'
-import { VeniceLogo } from '../ui/logo'
+import { OvxLogo } from '../ui/logo'
 
 const STARTER_PROMPTS = [
   'Explain how RSA encryption works using a metaphor a 10-year-old could grasp.',
@@ -43,7 +43,7 @@ export function ChatView() {
         {!conversation || conversation.messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6 gap-6">
             <div className="flex flex-col items-center gap-3">
-              <VeniceLogo size={32} className="opacity-80" />
+              <OvxLogo size={32} className="opacity-80" />
               <div className="text-[20px] font-semibold text-white/85">How can I help today?</div>
               <p className="text-[14px] text-white/45 max-w-sm">
                 {apiKey

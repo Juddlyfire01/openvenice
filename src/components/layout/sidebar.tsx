@@ -3,7 +3,7 @@ import { cn } from '../../lib/utils'
 import { useSettingsStore, type Tab } from '../../stores/settings-store'
 import { useChatStore } from '../../stores/chat-store'
 import { toast } from '../../stores/toast-store'
-import { VeniceLogo, VeniceWordmark } from '../ui/logo'
+import { OvxLogo, OvxWordmark } from '../ui/logo'
 import { PanelToggleButton } from './panel-toggle'
 import { RAIL_FOOTER_CLASS, RAIL_FOOTER_ROW_CLASS } from './rail-footer'
 import type { Conversation } from '../../types/venice'
@@ -138,8 +138,8 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
       )}>
         {expanded ? (
           <>
-            <VeniceLogo size={20} className="shrink-0" />
-            <VeniceWordmark className="text-[15px] tracking-tight truncate flex-1 min-w-0" />
+            <OvxLogo size={20} className="shrink-0" />
+            <OvxWordmark className="text-[15px] tracking-tight truncate flex-1 min-w-0" />
             <PanelToggleButton
               expanded={sidebarOpen}
               onClick={toggleSidebar}
@@ -162,7 +162,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
               label="Expand sidebar"
               className="hidden md:flex mx-auto shrink-0"
             />
-            <VeniceLogo size={20} className="shrink-0 md:hidden" />
+            <OvxLogo size={20} className="shrink-0 md:hidden" />
             <button
               onClick={onMobileClose}
               aria-label="Close menu"

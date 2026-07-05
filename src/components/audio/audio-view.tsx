@@ -11,7 +11,7 @@ import { SegmentedControl } from '../ui/sub-tabs'
 import { toast } from '../../stores/toast-store'
 
 const AUDIO_EXAMPLES = [
-  'Welcome to OpenVenice. The future of voice is here, and it speaks every language.',
+  'Welcome to OVX. The future of voice is here, and it speaks every language.',
   'In a quiet town nestled between two mountains, a small library held a very old book.',
   'Did you know? A single octopus has nine brains — one central, plus one in each arm.',
 ]

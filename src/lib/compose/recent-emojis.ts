@@ -1,4 +1,5 @@
-const STORAGE_KEY = 'openvenice-compose-recent-emojis'
+const STORAGE_KEY = 'ovx-compose-recent-emojis'
+const LEGACY_STORAGE_KEY = 'openvenice-compose-recent-emojis'
 export const MAX_RECENT_EMOJIS = 24
 
 export interface RecentEmoji {
@@ -9,7 +10,14 @@ export interface RecentEmoji {
 
 export function loadRecentEmojis(): RecentEmoji[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    let raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) {
+      raw = localStorage.getItem(LEGACY_STORAGE_KEY)
+      if (raw) {
+        localStorage.setItem(STORAGE_KEY, raw)
+        localStorage.removeItem(LEGACY_STORAGE_KEY)
+      }
+    }
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return []

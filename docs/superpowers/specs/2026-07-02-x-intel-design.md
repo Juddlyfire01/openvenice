@@ -7,7 +7,7 @@
 
 ## 1. Purpose
 
-X Intel is a privacy-first, account-agnostic intelligence tab bolted onto OpenVenice. The user supplies their own X API credentials (stored locally, like the Venice API key); the user enters one or more target accounts to gather intel on; each target gets its own persisted intel report in the browser. The tool gathers, stores, presents, and helps the user decide — posting is explicitly out of scope for v1.
+X Intel is a privacy-first, account-agnostic intelligence tab bolted onto OVX. The user supplies their own X API credentials (stored locally, like the Venice API key); the user enters one or more target accounts to gather intel on; each target gets its own persisted intel report in the browser. The tool gathers, stores, presents, and helps the user decide — posting is explicitly out of scope for v1.
 
 **Primary use case:** Build a dynamic character profile on Erik Voorhees and the Venice.ai team, track their posts and content, and produce Venice-synthesized intelligence + engagement network graphs to inform awareness-building and (future) reciprocation.
 
@@ -24,7 +24,7 @@ X Intel is a privacy-first, account-agnostic intelligence tab bolted onto OpenVe
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  OpenVenice SPA  (Vite, React 19, Zustand, all in browser)│
+│  OVX SPA  (Vite, React 19, Zustand, all in browser)│
 │  chat | image | audio | music | video | embed | workflow │
 │                                                          │
 │  + NEW  Intel tab                                        │
@@ -78,7 +78,7 @@ X Intel is a privacy-first, account-agnostic intelligence tab bolted onto OpenVe
 
 ## 4. Tab Structure
 
-Three navigation levels, all matching OpenVenice's existing conventions:
+Three navigation levels, all matching OVX's existing conventions:
 
 | Level | Mechanism | Reuses |
 |---|---|---|
@@ -216,7 +216,7 @@ A small, always-visible indicator (target rail footer or header) showing credits
 
 **Pay-per-use only.** No Basic/Pro stacking (docs confirm you either run an app on Basic *or* opt it into pay-per-use — not both on one credential set). Single bearer token, stored locally, single cost model. Dialog subtext states "Pay-per-use — credits deducted per request."
 
-**Transport:** reads call the X API v2 directly from the browser using the user's stored bearer, through a Vite proxy (`/xapi` → `https://api.x.com`) — the exact pattern OpenVenice already uses for Venice (`/venice` → `https://api.venice.ai` in `vite.config.ts`). This keeps the app fully account-agnostic and self-contained (the X MCP server was a research tool during design, not an app dependency).
+**Transport:** reads call the X API v2 directly from the browser using the user's stored bearer, through a Vite proxy (`/xapi` → `https://api.x.com`) — the exact pattern OVX already uses for Venice (`/venice` → `https://api.venice.ai` in `vite.config.ts`). This keeps the app fully account-agnostic and self-contained (the X MCP server was a research tool during design, not an app dependency).
 
 ## 6. Profile Synthesis
 
@@ -226,7 +226,7 @@ These are user-controllable variables exposed in the Profile sub-tab controls (g
 
 - **Context cap:** default 80 posts (most recent) — user can adjust 10–200. Balances signal vs. Venice token cost; lower = cheaper + faster, higher = more context.
 - **Temperature:** default 0.3 — user can adjust 0.0–1.0. Low temp gives analytical consistency (regenerating yields a recognizably similar profile); higher temp gives more varied phrasing.
-- **Default model:** `venice-uncensored-1-2` (cheap, capable, always available); user can pick any chat model OpenVenice already lists via the existing `use-models` hook.
+- **Default model:** `venice-uncensored-1-2` (cheap, capable, always available); user can pick any chat model OVX already lists via the existing `use-models` hook.
 - **Streaming:** non-streaming (fixed implementation choice, not a user variable — synthesis returns a complete structured result, not token-by-token; simpler, fits the "report" mental model).
 
 Settings persist per-target in the report (different targets may warrant different caps/temps) and globally as defaults for new targets.
@@ -292,7 +292,7 @@ export interface CharacterProfile {
 ```
 
 - `parseSynthesis(content: string): CharacterProfile` — parses the LLM's markdown/structured-text response into the typed `CharacterProfile`. Implementation detail; the system prompt instructs the model to emit a consistent structure (themes as bullet list, cadence as labeled fields, etc.) and `parseSynthesis` extracts them defensively.
-- `ChatCompletionResponse` — the existing OpenVenice type for `/chat/completions` non-streaming responses (already defined in `src/types/venice.ts`, reused as-is).
+- `ChatCompletionResponse` — the existing OVX type for `/chat/completions` non-streaming responses (already defined in `src/types/venice.ts`, reused as-is).
 
 ### Profile sub-tab layout
 
@@ -320,7 +320,7 @@ A React Flow canvas (reuses `@xyflow/react` v12, already a dependency for the Wo
 
 ### Node encoding
 
-- **Target node** — larger, centered by default, distinct color (white fill, matching OpenVenice's active-tab accent)
+- **Target node** — larger, centered by default, distinct color (white fill, matching OVX's active-tab accent)
 - **Engaged accounts** — sized by edge weight (more interactions = bigger), colored by relationship type (quotes = one hue, replies = another, mentions = another)
 - **Label** = `@username`; hover = tooltip with edge count + last seen; click = "Add as target" action (creates a new intel report, gathering begins)
 - **Unresolved nodes** — edges reference user IDs we haven't fetched profiles for. Show as `@unknown (id: …)` until you click "resolve" (one $0.01 User:Read call each, opt-in)
@@ -362,7 +362,7 @@ The graph is a **view over data you already paid for**. The only new API costs a
 ## 8. Privacy Posture
 
 - **X bearer token:** localStorage, user's browser, clearable, never sent anywhere except directly to X's API for reads
-- **Venice key:** unchanged from OpenVenice's existing behavior (localStorage, existing `auth-store.ts`)
+- **Venice key:** unchanged from OVX's existing behavior (localStorage, existing `auth-store.ts`)
 - **Intel reports:** IndexedDB, user's browser, clearable per-target or all-at-once
 - **Server:** none in v1. The future posting function (separate spec) will be stateless and retain nothing
 - **Cost meter data:** client-side only, never transmitted

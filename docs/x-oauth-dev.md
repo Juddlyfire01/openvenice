@@ -78,6 +78,8 @@ Each preview hostname is unique, e.g.:
 https://openvenice-git-oauth-20-you.vercel.app/api/x/oauth/callback
 ```
 
+(Vercel preview hostnames may still include `openvenice` from the legacy project name — register whatever URL your deployment actually serves.)
+
 You must **add that exact URL** in the X developer portal before Connect works on that deployment. X does not allow wildcard callbacks.
 
 **Practical approaches:**

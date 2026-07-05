@@ -19,7 +19,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     if (this.props.onError) this.props.onError(error, info)
-    console.error('[OpenVenice ErrorBoundary]', error, info)
+    console.error('[OVX ErrorBoundary]', error, info)
   }
 
   reset = () => this.setState({ error: null })
