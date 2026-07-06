@@ -2,8 +2,15 @@ import { gatherProfile, gatherPosts, gatherMentions } from './gather'
 import { deriveEdges } from './normalize'
 import { computeAnalytics, computeDelta, postDateRange } from './analytics'
 import { synthesizeReport } from './synthesize'
-import { mergePosts, useXIntelStore, newReportId, type RefreshedAt } from '../../stores/x-intel-store'
+import { mergePosts, useXIntelStore, newReportId, findReportKey, type RefreshedAt, type IntelReport } from '../../stores/x-intel-store'
 import type { IntelReportSnapshot, Post } from './types'
+
+function requireReport(username: string): { key: string; report: IntelReport } {
+  const reports = useXIntelStore.getState().reports
+  const key = findReportKey(reports, username)
+  if (!key) throw new Error(`No report for ${username}`)
+  return { key, report: reports[key] }
+}
 
 /**
  * Build the next refreshedAt map for a report, stamping the given section(s) with
@@ -11,8 +18,8 @@ import type { IntelReportSnapshot, Post } from './types'
  * "nothing new" (HTTP 200, zero posts) refresh still records that we checked,
  * while a thrown fetch never reaches here and leaves the old timestamp intact.
  */
-function markRefreshed(username: string, ...sections: (keyof RefreshedAt)[]): RefreshedAt {
-  const prev = useXIntelStore.getState().reports[username]?.refreshedAt ?? {}
+function markRefreshed(key: string, ...sections: (keyof RefreshedAt)[]): RefreshedAt {
+  const prev = useXIntelStore.getState().reports[key]?.refreshedAt ?? {}
   const now = new Date().toISOString()
   const next: RefreshedAt = { ...prev }
   for (const s of sections) next[s] = now
@@ -28,18 +35,18 @@ function markRefreshed(username: string, ...sections: (keyof RefreshedAt)[]): Re
  */
 export async function runGather(username: string, opts: { backfill?: number } = {}): Promise<void> {
   const { updateReport, addCost } = useXIntelStore.getState()
-  const report = useXIntelStore.getState().reports[username]
-  if (!report) throw new Error(`No report for ${username}`)
+  const { key, report } = requireReport(username)
+  const apiUsername = report.profile?.username ?? report.username
 
   // 1. Profile — always refresh (cheap, metrics change)
-  const profileResult = await gatherProfile(username)
-  addCost(username, profileResult.cost)
+  const profileResult = await gatherProfile(apiUsername)
+  addCost(key, profileResult.cost)
   const profile = profileResult.data
-  updateReport(username, { profile })
+  updateReport(key, { profile })
 
   // 2. Posts (outbound, incremental via since_id) + mentions (inbound), in parallel
   // Re-read the current state to avoid a stale snapshot
-  const currentReport = useXIntelStore.getState().reports[username]
+  const currentReport = useXIntelStore.getState().reports[key]
   const sinceId = currentReport && currentReport.posts.length > 0
     ? currentReport.profile?.mostRecentPostId ?? undefined
     : undefined
@@ -47,17 +54,17 @@ export async function runGather(username: string, opts: { backfill?: number } = 
     gatherPosts(profile.id, { sinceId, maxResults: opts.backfill ?? 50 }),
     gatherMentions(profile.id).catch(() => ({ data: [] as Post[], cost: 0 })),
   ])
-  addCost(username, postsResult.cost)
-  addCost(username, mentionsResult.cost)
+  addCost(key, postsResult.cost)
+  addCost(key, mentionsResult.cost)
 
   // Re-read posts right before merging to avoid stale snapshot from concurrent gathers
-  const existingPosts = useXIntelStore.getState().reports[username]?.posts ?? []
+  const existingPosts = useXIntelStore.getState().reports[key]?.posts ?? []
   const merged = mergePosts(mergePosts(existingPosts, postsResult.data), mentionsResult.data)
 
   // 3. Edges — recomputed locally from the full merged post set (outbound + inbound), free
   const edges = deriveEdges(profile.id, merged)
 
-  updateReport(username, { posts: merged, edges, refreshedAt: markRefreshed(username, 'profile', 'feed', 'network') })
+  updateReport(key, { posts: merged, edges, refreshedAt: markRefreshed(key, 'profile', 'feed', 'network') })
 }
 
 /**
@@ -66,12 +73,12 @@ export async function runGather(username: string, opts: { backfill?: number } = 
  */
 export async function refreshProfile(username: string): Promise<void> {
   const { updateReport, addCost } = useXIntelStore.getState()
-  const report = useXIntelStore.getState().reports[username]
-  if (!report) throw new Error(`No report for ${username}`)
+  const { key, report } = requireReport(username)
+  const apiUsername = report.profile?.username ?? report.username
 
-  const result = await gatherProfile(username)
-  addCost(username, result.cost)
-  updateReport(username, { profile: result.data, refreshedAt: markRefreshed(username, 'profile') })
+  const result = await gatherProfile(apiUsername)
+  addCost(key, result.cost)
+  updateReport(key, { profile: result.data, refreshedAt: markRefreshed(key, 'profile') })
 }
 
 /**
@@ -81,28 +88,28 @@ export async function refreshProfile(username: string): Promise<void> {
  */
 export async function refreshPosts(username: string): Promise<void> {
   const { updateReport, addCost } = useXIntelStore.getState()
-  const report = useXIntelStore.getState().reports[username]
-  if (!report) throw new Error(`No report for ${username}`)
+  const { key, report } = requireReport(username)
+  const apiUsername = report.profile?.username ?? report.username
 
   // Need a profile id to query posts; fetch it first if we don't have one yet.
   let profileId = report.profile?.id
   if (!profileId) {
-    const profileResult = await gatherProfile(username)
-    addCost(username, profileResult.cost)
-    updateReport(username, { profile: profileResult.data, refreshedAt: markRefreshed(username, 'profile') })
+    const profileResult = await gatherProfile(apiUsername)
+    addCost(key, profileResult.cost)
+    updateReport(key, { profile: profileResult.data, refreshedAt: markRefreshed(key, 'profile') })
     profileId = profileResult.data.id
   }
 
   const sinceId = report.posts.length > 0 ? report.profile?.mostRecentPostId ?? undefined : undefined
   const postsResult = await gatherPosts(profileId, { sinceId })
-  addCost(username, postsResult.cost)
+  addCost(key, postsResult.cost)
 
-  const existingPosts = useXIntelStore.getState().reports[username]?.posts ?? []
+  const existingPosts = useXIntelStore.getState().reports[key]?.posts ?? []
   const merged = mergePosts(existingPosts, postsResult.data)
   const edges = deriveEdges(profileId, merged)
   // Stamp feed + network on every success — a zero-new-posts pull still means
   // "checked just now", so the label must move even though `merged` is unchanged.
-  updateReport(username, { posts: merged, edges, refreshedAt: markRefreshed(username, 'feed', 'network') })
+  updateReport(key, { posts: merged, edges, refreshedAt: markRefreshed(key, 'feed', 'network') })
 }
 
 /**
@@ -113,24 +120,24 @@ export async function refreshPosts(username: string): Promise<void> {
  */
 export async function refreshNetworkWithMentions(username: string): Promise<void> {
   const { updateReport, addCost } = useXIntelStore.getState()
-  const report = useXIntelStore.getState().reports[username]
-  if (!report) throw new Error(`No report for ${username}`)
+  const { key, report } = requireReport(username)
+  const apiUsername = report.profile?.username ?? report.username
 
   let profileId = report.profile?.id
   if (!profileId) {
-    const profileResult = await gatherProfile(username)
-    addCost(username, profileResult.cost)
-    updateReport(username, { profile: profileResult.data, refreshedAt: markRefreshed(username, 'profile') })
+    const profileResult = await gatherProfile(apiUsername)
+    addCost(key, profileResult.cost)
+    updateReport(key, { profile: profileResult.data, refreshedAt: markRefreshed(key, 'profile') })
     profileId = profileResult.data.id
   }
 
   const mentionsResult = await gatherMentions(profileId)
-  addCost(username, mentionsResult.cost)
+  addCost(key, mentionsResult.cost)
 
-  const existingPosts = useXIntelStore.getState().reports[username]?.posts ?? []
+  const existingPosts = useXIntelStore.getState().reports[key]?.posts ?? []
   const merged = mergePosts(existingPosts, mentionsResult.data)
   const edges = deriveEdges(profileId, merged)
-  updateReport(username, { posts: merged, edges, refreshedAt: markRefreshed(username, 'network', 'feed') })
+  updateReport(key, { posts: merged, edges, refreshedAt: markRefreshed(key, 'network', 'feed') })
 }
 
 /**
@@ -144,8 +151,7 @@ export async function refreshNetworkWithMentions(username: string): Promise<void
  */
 export async function generateReport(username: string): Promise<IntelReportSnapshot> {
   const { appendReport } = useXIntelStore.getState()
-  const report = useXIntelStore.getState().reports[username]
-  if (!report) throw new Error(`No report for ${username}`)
+  const { key, report } = requireReport(username)
   if (!report.profile) throw new Error('Gather the profile first')
   if (report.posts.length === 0) throw new Error('Gather posts first (re-gather from the target rail)')
 
@@ -187,6 +193,6 @@ export async function generateReport(username: string): Promise<IntelReportSnaps
     previousReportId: prevSnapshot?.id ?? null,
   }
 
-  appendReport(username, snapshot)
+  appendReport(key, snapshot)
   return snapshot
 }

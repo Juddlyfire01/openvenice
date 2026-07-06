@@ -126,7 +126,8 @@ function canonical(username: string): string {
   return username.trim().replace(/^@/, '')
 }
 
-function findReportKey(reports: Record<string, IntelReport>, username: string): string | undefined {
+/** Case-insensitive lookup of the persisted storage key for a target username. */
+export function findReportKey(reports: Record<string, IntelReport>, username: string): string | undefined {
   const name = canonical(username).toLowerCase()
   return Object.keys(reports).find((k) => k.toLowerCase() === name)
 }

@@ -46,7 +46,9 @@ export function TargetRail() {
     if (!name) return
     setInput('')
     addTarget(name)
-    await gather(name)
+    // addTarget may revive a differently-cased cached key (e.g. askvenice → AskVenice).
+    const resolved = useXIntelStore.getState().activeTarget
+    if (resolved) await gather(resolved)
   }
 
   return (
