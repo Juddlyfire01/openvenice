@@ -32,6 +32,11 @@ function IntelView() {
   return <Suspense fallback={<div className="flex items-center justify-center h-full text-[12px] text-white/15">Loading intel...</div>}><LazyIntelView /></Suspense>
 }
 
+const LazyStatsView = lazy(() => import('./components/stats/stats-view').then((m) => ({ default: m.StatsView })))
+function StatsView() {
+  return <Suspense fallback={<div className="flex items-center justify-center h-full text-[12px] text-white/15">Loading stats...</div>}><LazyStatsView /></Suspense>
+}
+
 const views = {
   chat: ChatView,
   image: ImagePage,
@@ -42,6 +47,7 @@ const views = {
   workflows: WorkflowsView,
   playground: PlaygroundView,
   intel: IntelView,
+  stats: StatsView,
   settings: SettingsView,
 } as const
 
@@ -101,7 +107,7 @@ export function App() {
           onOpenApiKey={() => setApiKeyOpen(true)}
           onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
         />
-        <main className="flex-1 min-h-0 overflow-hidden">
+        <main className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <ErrorBoundary key={activeTab}>
             <ActiveView />
           </ErrorBoundary>

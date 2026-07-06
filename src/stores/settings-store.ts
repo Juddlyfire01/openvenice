@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { createSafeStorage } from '../lib/safe-storage'
 import { DEFAULT_THEME } from '../lib/theme-palettes'
 
-export type Tab = 'chat' | 'image' | 'audio' | 'music' | 'video' | 'embeddings' | 'workflows' | 'playground' | 'intel' | 'settings'
+export type Tab = 'chat' | 'image' | 'audio' | 'music' | 'video' | 'embeddings' | 'workflows' | 'playground' | 'intel' | 'stats' | 'settings'
 export type Theme = 'dark' | 'venice' | 'grey' | 'light'
 export type Scale = 90 | 100 | 110 | 125
 export type FontScale = 'sm' | 'md' | 'lg'

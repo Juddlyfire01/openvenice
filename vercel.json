@@ -6,6 +6,7 @@
   "rewrites": [
     { "source": "/api/x/proxy/:path*", "destination": "/api/x/proxy?path=:path*" },
     { "source": "/api/venice/proxy/:path*", "destination": "/api/venice/proxy?path=:path*" },
+    { "source": "/api/venicestats/proxy/:path*", "destination": "/api/venicestats/proxy?path=:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
