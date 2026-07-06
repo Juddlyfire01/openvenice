@@ -3,6 +3,7 @@ import { useXSelfStore } from '../../stores/x-self-store'
 import { beginSelfLogin, selfLogout } from '../../lib/x-intel/self-client'
 import { selectSelfAccount, refreshSelfSession } from '../../lib/x-intel/self-orchestrate'
 import { openComposeForTarget } from '../../lib/compose/open-compose'
+import { CostMeter } from './cost-meter'
 import { cn } from '../../lib/utils'
 
 function relativeTime(iso: string | undefined): string {
@@ -25,7 +26,6 @@ export function SelfRail() {
   const accounts = useXSelfStore((s) => s.accounts)
   const accountOrder = useXSelfStore((s) => s.accountOrder)
   const activeAccountId = useXSelfStore((s) => s.activeAccountId)
-  const connected = useXSelfStore((s) => s.connected)
   const disconnectAccount = useXSelfStore((s) => s.disconnectAccount)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -138,11 +138,7 @@ export function SelfRail() {
         )}
       </div>
 
-      {/* Keep parity with TargetRail's footer slot (CostMeter lives there). Self
-          spend tracking is deferred; reserve the space so the rail heights match. */}
-      <div className="border-t border-[var(--color-border-faint)] px-2 py-1.5 text-[9px] text-[var(--color-text-quaternary)] font-mono">
-        {connected ? `${accountOrder.length} account${accountOrder.length === 1 ? '' : 's'}` : 'not connected'}
-      </div>
+      <CostMeter />
     </div>
   )
 }

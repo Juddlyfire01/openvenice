@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useXSelfStore } from '../../stores/x-self-store'
-import { refreshSelfSession, gatherSelf } from '../../lib/x-intel/self-orchestrate'
-import { beginSelfLogin, selfLogout } from '../../lib/x-intel/self-client'
+import { gatherSelf, disconnectActiveAccount } from '../../lib/x-intel/self-orchestrate'
+import { beginSelfLogin } from '../../lib/x-intel/self-client'
 import { linkify } from '../../lib/x-intel/linkify'
 import { formatTokens } from '../../lib/utils'
 import { computeActivity } from '../../lib/x-intel/activity'
@@ -180,15 +180,6 @@ export function SelfProfileView() {
     return () => { cancelled = true }
   }, [hydrated, connected, activeAccountId])
 
-  const disconnect = async () => {
-    if (!activeAccountId) return
-    await selfLogout(activeAccountId)
-    // Soft-disconnect: keep the encrypted cache so reconnecting revives it.
-    useXSelfStore.getState().disconnectAccount(activeAccountId)
-    // Re-probe so the store reflects the server's new active account (or none).
-    await refreshSelfSession()
-  }
-
   // OAuth round-trip in flight (click → x.com → return, or session probe still
   // resolving after the callback). Show the authorizing screen instead of the
   // Connect CTA so the user sees the connection process has begun.
@@ -222,7 +213,7 @@ export function SelfProfileView() {
   return (
     <div className="flex flex-col lg:flex-row h-full min-h-0">
       {/* Left: identity + metrics (shared with the Targets tab) */}
-      <div className="lg:w-[340px] lg:shrink-0 lg:border-r border-white/[0.05] lg:h-full min-h-0">
+      <div className="lg:w-[340px] lg:shrink-0 lg:border-r border-white/[0.05] lg:h-full min-h-0 overflow-hidden">
         <ProfileOverview
           profile={profile}
           connected={connected}
@@ -242,7 +233,7 @@ export function SelfProfileView() {
           activity={profile ? computeActivity(profile, posts) : null}
           synthesisSettings={account.synthesisSettings}
           onSynthesisChange={(patch) => setSynthesisSettings(activeAccountId, patch)}
-          onDisconnect={disconnect}
+          footerAction={connected ? { label: 'Disconnect account', onClick: () => { void disconnectActiveAccount() } } : undefined}
         />
       </div>
 

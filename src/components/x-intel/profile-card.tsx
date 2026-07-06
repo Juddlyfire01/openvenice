@@ -2,8 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { useXIntelStore } from '../../stores/x-intel-store'
 import { useXSelfStore } from '../../stores/x-self-store'
 import { refreshProfile, runGather } from '../../lib/x-intel/orchestrate'
-import { selfLogout } from '../../lib/x-intel/self-client'
-import { refreshSelfSession } from '../../lib/x-intel/self-orchestrate'
 import { linkify } from '../../lib/x-intel/linkify'
 import { ensureProfileShape, profileNeedsLinkRefresh } from '../../lib/x-intel/normalize'
 import { computeActivity } from '../../lib/x-intel/activity'
@@ -70,6 +68,7 @@ export function ProfileCard() {
   const activeTarget = useXIntelStore((s) => s.activeTarget)
   const report = useXIntelStore((s) => (s.activeTarget ? s.reports[s.activeTarget] : undefined))
   const updateReport = useXIntelStore((s) => s.updateReport)
+  const removeTarget = useXIntelStore((s) => s.removeTarget)
   const connected = useXSelfStore((s) => s.connected)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
@@ -88,15 +87,10 @@ export function ProfileCard() {
     }
   }
 
-  const disconnect = async () => {
-    const activeId = useXSelfStore.getState().activeAccountId
-    if (!activeId) return
-    // Soft-disconnect: keep cached profile/posts/reports so a reconnect is
-    // instant and the UI never flashes empty states. Hard-clear lives in
-    // Settings → Data & privacy.
-    await selfLogout(activeId)
-    useXSelfStore.getState().disconnectAccount(activeId)
-    await refreshSelfSession()
+  const handleRemove = () => {
+    if (!activeTarget) return
+    if (!confirm(`Remove @${activeTarget} from the Others rail? Gathered data stays encrypted on this device and is revived if you add them again. Clear it anytime from Settings → Data & privacy.`)) return
+    removeTarget(activeTarget)
   }
 
   const profile = report?.profile ? ensureProfileShape(report.profile) : null
@@ -131,7 +125,7 @@ export function ProfileCard() {
       activity={activity}
       synthesisSettings={synthesisSettings}
       onSynthesisChange={(patch) => updateReport(activeTarget, { synthesisSettings: { ...synthesisSettings, ...patch } })}
-      onDisconnect={disconnect}
+      footerAction={{ label: 'Remove from rail', onClick: handleRemove }}
     />
   )
 }

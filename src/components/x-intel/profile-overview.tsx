@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { useModels } from '../../hooks/use-models'
-import { SectionRefresh, SectionEmpty } from './section-actions'
+import { SectionRefresh, SectionEmpty, sectionActionBtnCls } from './section-actions'
 import { ActivityGlance } from './activity-glance'
+import { RAIL_FOOTER_CLASS, RAIL_FOOTER_ROW_CLASS } from '../layout/rail-footer'
 import { formatTokens, cn } from '../../lib/utils'
 import type { Profile, SynthesisSettings } from '../../lib/x-intel/types'
 import type { ActivitySummary } from '../../lib/x-intel/activity'
@@ -28,7 +29,8 @@ export interface ProfileOverviewProps {
   activity: ActivitySummary | null
   synthesisSettings: SynthesisSettings
   onSynthesisChange: (patch: Partial<SynthesisSettings>) => void
-  onDisconnect: () => void
+  /** Fixed footer action — self: disconnect OAuth; targets: remove from rail. */
+  footerAction?: { label: string; onClick: () => void }
 }
 
 const GearIcon = () => (
@@ -42,32 +44,48 @@ const GearIcon = () => (
  * Shared identity / overview column for a single X subject — used by both the
  * self Profile tab and the Targets tab so the two stay visually identical.
  * Order: refresh bar → identity + metrics → optional extras → latest report →
- * synthesis settings (always open) → disconnect. Self carries an extra metrics
+ * synthesis settings (always open) → fixed footer action. Self carries an extra metrics
  * block (bookmarks/likes) that targets simply omit.
  */
 export function ProfileOverview({
   profile, connected, refreshing, refreshError, lastGatheredIso, onRefresh,
   emptyHint, showYouBadge, renderBio, extraSection, activity,
-  synthesisSettings, onSynthesisChange, onDisconnect,
+  synthesisSettings, onSynthesisChange, footerAction,
 }: ProfileOverviewProps) {
   const { data: models } = useModels('text')
 
+  const actionFooter = footerAction ? (
+    <div className={RAIL_FOOTER_CLASS}>
+      <div className={cn(RAIL_FOOTER_ROW_CLASS, 'justify-end')}>
+        <button type="button" onClick={footerAction.onClick} className={sectionActionBtnCls}>
+          {footerAction.label}
+        </button>
+      </div>
+    </div>
+  ) : null
+
   if (!profile) {
     return (
-      <SectionEmpty
-        title="No profile gathered yet"
-        hint={emptyHint}
-        actionLabel="Refresh profile"
-        onAction={onRefresh}
-        busy={refreshing}
-        disabled={!connected}
-        error={refreshError}
-      />
+      <div className="flex flex-col h-full min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <SectionEmpty
+            title="No profile gathered yet"
+            hint={emptyHint}
+            actionLabel="Refresh profile"
+            onAction={onRefresh}
+            busy={refreshing}
+            disabled={!connected}
+            error={refreshError}
+          />
+        </div>
+        {actionFooter}
+      </div>
     )
   }
 
   return (
-    <div className="h-full overflow-y-auto px-5 py-4 space-y-4">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
       {/* Refresh bar */}
       <div className="pb-3 border-b border-white/[0.04]">
         <SectionRefresh
@@ -177,13 +195,8 @@ export function ProfileOverview({
           </label>
         </div>
       </div>
-
-      {/* Disconnect */}
-      <div className="pt-3 border-t border-white/[0.04]">
-        <button onClick={onDisconnect} className="text-[11px] text-white/30 hover:text-red-400/80 transition-colors">
-          Disconnect account
-        </button>
       </div>
+      {actionFooter}
     </div>
   )
 }

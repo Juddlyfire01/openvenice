@@ -8,7 +8,7 @@
 // generateSelfReport operate on the active account id; the server-side
 // x_active_account cookie already routes /api/x/proxy calls to that account.
 import { gatherSelfProfile, gatherSelfPosts, gatherSelfBookmarks, gatherSelfLikes } from './self-gather'
-import { getSelfSession, switchActiveAccount } from './self-client'
+import { getSelfSession, selfLogout, switchActiveAccount } from './self-client'
 import { deriveEdges } from './normalize'
 import { computeAnalytics, computeDelta, postDateRange } from './analytics'
 import { synthesizeReport } from './synthesize'
@@ -81,6 +81,19 @@ export function refreshSelfSession(): Promise<boolean> {
     sessionRefreshPromise = null
   })
   return sessionRefreshPromise
+}
+
+/** Disconnect the active OAuth account — shared by self Profile and Others
+ *  profile cards so both surfaces always log out the same server-side session. */
+export async function disconnectActiveAccount(): Promise<void> {
+  const store = useXSelfStore.getState()
+  const activeAccountId = store.activeAccountId
+  if (!activeAccountId) return
+  const username = store.accounts[activeAccountId]?.username ?? 'account'
+  if (!confirm(`Disconnect @${username}? Your gathered data stays encrypted on this device and is revived if you reconnect. Clear it anytime from Settings → Data & privacy.`)) return
+  await selfLogout(activeAccountId)
+  store.disconnectAccount(activeAccountId)
+  await refreshSelfSession()
 }
 
 export interface OAuthBootstrapResult {
