@@ -52,8 +52,8 @@ interface NavGroup {
 
 const navGroups: NavGroup[] = [
   {
-    label: 'Conversation',
-    items: [{ id: 'chat', label: 'Chat', Icon: ChatIcon }],
+    label: 'Dashboard',
+    items: [{ id: 'intel', label: 'Intel', Icon: IntelIcon }],
   },
   {
     label: 'Generate',
@@ -62,15 +62,6 @@ const navGroups: NavGroup[] = [
       { id: 'audio', label: 'Audio', Icon: AudioIcon },
       { id: 'music', label: 'Music', Icon: MusicIcon },
       { id: 'video', label: 'Video', Icon: VideoIcon },
-      { id: 'embeddings', label: 'Embed', Icon: EmbedIcon },
-    ],
-  },
-  {
-    label: 'Build',
-    items: [
-      { id: 'workflows', label: 'Workflows', Icon: WorkflowIcon },
-      { id: 'playground', label: 'Playground', Icon: PlaygroundIcon },
-      { id: 'intel', label: 'Intel', Icon: IntelIcon },
     ],
   },
 ]

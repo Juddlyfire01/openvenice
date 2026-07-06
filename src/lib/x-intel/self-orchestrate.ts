@@ -2,8 +2,13 @@
 // exact analytics + synthesis pipeline that targets use, so the self-report is
 // structurally identical to a target report (everything a target has) — plus
 // bookmarks/likes context the target path can't access.
+//
+// Multi-account: the session probe returns the full account list; we reconcile
+// the store (add new accounts, drop disconnected, set active). gatherSelf /
+// generateSelfReport operate on the active account id; the server-side
+// x_active_account cookie already routes /api/x/proxy calls to that account.
 import { gatherSelfProfile, gatherSelfPosts, gatherSelfBookmarks, gatherSelfLikes } from './self-gather'
-import { getSelfSession } from './self-client'
+import { getSelfSession, switchActiveAccount } from './self-client'
 import { deriveEdges } from './normalize'
 import { computeAnalytics, computeDelta, postDateRange } from './analytics'
 import { synthesizeReport } from './synthesize'
@@ -13,16 +18,56 @@ import { useSettingsStore } from '../../stores/settings-store'
 import { toast } from '../../stores/toast-store'
 import { runGather } from './orchestrate'
 import { DEFAULT_TARGET } from './fields'
-import type { IntelReportSnapshot, ChangeSummary } from './types'
+import type { IntelReportSnapshot, ChangeSummary, Post } from './types'
 
 let sessionRefreshPromise: Promise<boolean> | null = null
 let oauthBootstrapPromise: ReturnType<typeof runOAuthBootstrap> | null = null
 
+/**
+ * Resolve once the self store's persist layer has hydrated from localStorage.
+ * zustand hydrates asynchronously, so writing server truth (connected/accounts/
+ * activeAccountId) before hydration finishes lets the late hydration merge
+ * clobber those fields — which is what makes the just-connected account fail to
+ * load and the "No account selected" state flash mid-connect. Gate reconcile on
+ * this so we always write on top of the hydrated baseline.
+ */
+function awaitSelfHydration(): Promise<void> {
+  if (useXSelfStore.persist.hasHydrated()) return Promise.resolve()
+  return new Promise((resolve) => {
+    const unsub = useXSelfStore.persist.onFinishHydration(() => {
+      unsub?.()
+      resolve()
+    })
+    // Guard against a hydration that finished between the check and subscribe.
+    if (useXSelfStore.persist.hasHydrated()) resolve()
+  })
+}
+
+/** Reconcile the store with the server-side account list + active account. */
+function reconcileAccounts(session: { connected: boolean; accountId?: string; username?: string; accounts: { id: string; username: string }[] }): void {
+  const store = useXSelfStore.getState()
+  store.setConnected(session.connected)
+  for (const a of session.accounts) store.upsertAccount(a)
+  // Drop accounts the server no longer knows about.
+  const serverIds = new Set(session.accounts.map((a) => a.id))
+  for (const id of store.accountOrder) {
+    if (!serverIds.has(id)) store.removeAccount(id)
+  }
+  if (session.connected && session.accountId) {
+    store.setActiveAccount(session.accountId)
+  } else {
+    store.setActiveAccount(null)
+  }
+}
+
 async function probeSelfSession(): Promise<boolean> {
-  const { connected } = await getSelfSession()
-  useXSelfStore.getState().setConnected(connected)
-  if (connected) seedDefaultTarget()
-  return connected
+  // Fetch the session and wait for persist hydration in parallel, then reconcile
+  // on top of the hydrated baseline so a late hydration can't overwrite the
+  // server-truth account list / active account we're about to set.
+  const [session] = await Promise.all([getSelfSession(), awaitSelfHydration()])
+  reconcileAccounts(session)
+  if (session.connected) seedDefaultTarget()
+  return session.connected
 }
 
 /**
@@ -56,7 +101,7 @@ export function bootstrapXOAuthReturn(): Promise<OAuthBootstrapResult> {
 async function runOAuthBootstrap(): Promise<OAuthBootstrapResult> {
   const params = new URLSearchParams(window.location.search)
   const oauthError = params.get('x_error')
-  const oauthReturn = params.get('x_connected') === '1' || !!oauthError
+  const oauthReturn = params.get('x_connected') !== null || !!oauthError
 
   // An OAuth round-trip is "in progress" when we land here straight from the
   // callback (?x_connected / ?x_error) OR when a click flagged the sessionStorage
@@ -78,10 +123,12 @@ async function runOAuthBootstrap(): Promise<OAuthBootstrapResult> {
   }
 
   // The round-trip is over — clear the bridge and drop the connecting flag so the
-  // real connected/disconnected state can render. The syncing phase (profile
-  // gather) is driven separately by SelfProfileView via its own busy state.
+  // real connected/disconnected state can render. Only clear `connecting` if THIS
+  // bootstrap owned it (inProgress): otherwise a probe that resolves during the
+  // pre-redirect frames of a fresh Connect click would stomp the spinner the
+  // click just turned on, flashing back to the Connect button before redirect.
   try { sessionStorage.removeItem('x_oauth_in_progress') } catch { /* private mode */ }
-  useXSelfStore.getState().setConnecting(false)
+  if (inProgress) useXSelfStore.getState().setConnecting(false)
 
   if (oauthReturn) {
     window.history.replaceState({}, '', window.location.pathname)
@@ -115,13 +162,49 @@ function seedDefaultTarget(): void {
   }
 }
 
-/** Full gather of the connected user: profile → posts → bookmarks → likes → edges. */
+/** Switch the active account server-side and reflect it in the store. */
+export async function selectSelfAccount(accountId: string): Promise<boolean> {
+  const result = await switchActiveAccount(accountId)
+  if (!result.ok) return false
+  useXSelfStore.getState().setActiveAccount(accountId)
+  return true
+}
+
+/** Refresh only the active account's posts (lighter than a full gatherSelf).
+ *  Mirrors refreshPosts() on the target side. */
+export async function refreshSelfPosts(opts: { maxResults?: number } = {}): Promise<void> {
+  const store = useXSelfStore.getState()
+  const accountId = store.activeAccountId
+  if (!accountId) throw new Error('No active account')
+  const account = store.accounts[accountId]
+  if (!account?.profile) throw new Error('Load your profile first')
+
+  const posts = await gatherSelfPosts(account.profile.id, opts).catch(() => [] as Post[])
+  const merged = mergePosts(account.posts, posts)
+  useXSelfStore.getState().setPosts(accountId, merged)
+  useXSelfStore.getState().markRefreshed(accountId, 'posts')
+  useXSelfStore.getState().setEdges(accountId, deriveEdges(account.profile.id, merged))
+}
+
+/** Refresh the active account's network by pulling mentions (who's mentioning
+ *  them). Mirrors refreshNetworkWithMentions() on the target side. The edges
+ *  from posts are already derived in gatherSelf/refreshSelfPosts; this is a
+ *  placeholder for the self-side mentions pull (deferred until the self-side
+ *  mentions endpoint is wired). For now it just re-pulls posts. */
+export async function refreshSelfNetwork(): Promise<void> {
+  await refreshSelfPosts()
+}
+
+/** Full gather of the connected (active) user: profile → posts → bookmarks → likes → edges. */
 export async function gatherSelf(opts: { maxResults?: number } = {}): Promise<void> {
   const store = useXSelfStore.getState()
+  const accountId = store.activeAccountId
+  if (!accountId) throw new Error('No active account')
 
   const profile = await gatherSelfProfile()
-  store.setProfile(profile)
-  store.markRefreshed('profile')
+  store.upsertAccount({ id: accountId, username: profile.username })
+  store.setProfile(accountId, profile)
+  store.markRefreshed(accountId, 'profile')
 
   const [posts, bookmarks, likes] = await Promise.all([
     gatherSelfPosts(profile.id, opts).catch(() => [] as never[]),
@@ -129,39 +212,43 @@ export async function gatherSelf(opts: { maxResults?: number } = {}): Promise<vo
     gatherSelfLikes(profile.id, opts).catch(() => [] as never[]),
   ])
 
-  const mergedPosts = mergePosts(useXSelfStore.getState().posts, posts)
-  store.setPosts(mergedPosts)
-  store.markRefreshed('posts')
+  const account = useXSelfStore.getState().accounts[accountId]
+  const mergedPosts = mergePosts(account?.posts ?? [], posts)
+  store.setPosts(accountId, mergedPosts)
+  store.markRefreshed(accountId, 'posts')
 
-  store.setBookmarks(mergePosts(useXSelfStore.getState().bookmarks, bookmarks))
-  store.markRefreshed('bookmarks')
+  store.setBookmarks(accountId, mergePosts(account?.bookmarks ?? [], bookmarks))
+  store.markRefreshed(accountId, 'bookmarks')
 
-  store.setLikes(mergePosts(useXSelfStore.getState().likes, likes))
-  store.markRefreshed('likes')
+  store.setLikes(accountId, mergePosts(account?.likes ?? [], likes))
+  store.markRefreshed(accountId, 'likes')
 
-  store.setEdges(deriveEdges(profile.id, mergedPosts))
+  store.setEdges(accountId, deriveEdges(profile.id, mergedPosts))
 }
 
 /** Generate a full intelligence report over the connected user's own posts. */
 export async function generateSelfReport(): Promise<IntelReportSnapshot> {
   const state = useXSelfStore.getState()
-  if (!state.profile) throw new Error('Load your profile first')
-  if (state.posts.length === 0) throw new Error('Gather your posts first')
+  const accountId = state.activeAccountId
+  if (!accountId) throw new Error('No active account')
+  const account = state.accounts[accountId]
+  if (!account || !account.profile) throw new Error('Load your profile first')
+  if (account.posts.length === 0) throw new Error('Gather your posts first')
 
-  const settings = state.synthesisSettings
-  const analytics = computeAnalytics(state.profile, state.posts, state.edges)
-  const prevSnapshot = state.reportHistory[0] ?? null
+  const settings = account.synthesisSettings
+  const analytics = computeAnalytics(account.profile, account.posts, account.edges)
+  const prevSnapshot = account.reportHistory[0] ?? null
 
   let computedDelta: Omit<ChangeSummary, 'narrative'> | null = null
   if (prevSnapshot) {
     const prevIds = new Set(prevSnapshot.meta.postIdsAnalyzed)
-    const newPostIds = state.posts.map((p) => p.id).filter((id) => !prevIds.has(id))
-    const newPosts = state.posts.filter((p) => !prevIds.has(p.id))
+    const newPostIds = account.posts.map((p) => p.id).filter((id) => !prevIds.has(id))
+    const newPosts = account.posts.filter((p) => !prevIds.has(p.id))
     computedDelta = computeDelta(prevSnapshot.analytics, analytics, newPostIds, postDateRange(newPosts))
   }
 
   const { narrative, changeNarrative, tokenCost } = await synthesizeReport(
-    state.profile, state.posts, analytics, computedDelta, prevSnapshot, settings,
+    account.profile, account.posts, analytics, computedDelta, prevSnapshot, settings,
   )
 
   const snapshot: IntelReportSnapshot = {
@@ -170,9 +257,9 @@ export async function generateSelfReport(): Promise<IntelReportSnapshot> {
     model: settings.model,
     synthesisSettings: { ...settings },
     meta: {
-      postCount: state.posts.length,
-      dateRange: postDateRange(state.posts),
-      postIdsAnalyzed: state.posts.map((p) => p.id),
+      postCount: account.posts.length,
+      dateRange: postDateRange(account.posts),
+      postIdsAnalyzed: account.posts.map((p) => p.id),
       tokenCost,
     },
     analytics,
@@ -181,6 +268,6 @@ export async function generateSelfReport(): Promise<IntelReportSnapshot> {
     previousReportId: prevSnapshot?.id ?? null,
   }
 
-  useXSelfStore.getState().appendReport(snapshot)
+  useXSelfStore.getState().appendReport(accountId, snapshot)
   return snapshot
 }

@@ -1,13 +1,29 @@
 // GET /api/x/oauth/callback?code=...&state=...
 // X redirects here after the user consents. We verify the CSRF state, exchange
-// the code for tokens using the stored PKCE verifier, persist the tokens in
-// HttpOnly cookies (never exposed to client JS), clear the transient cookies,
-// and bounce the user back into the app.
+// the code for tokens using the stored PKCE verifier, look up the connected
+// user's X id + username (so we can stamp per-account cookies), persist the
+// tokens in HttpOnly cookies keyed by that id, mark the new account active,
+// clear the transient cookies, and bounce the user back into the app.
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
-  COOKIE, readEnv, exchangeCode, parseCookies, serializeCookie, clearCookie,
+  X_API_BASE, COOKIE, readEnv, exchangeCode, parseCookies, serializeCookie, clearCookie,
   cookiesAreSecure, unpackOAuthState,
+  serializeAccountCookies,
 } from '../../_lib/x-oauth.js'
+
+interface MeResponse {
+  data?: { id: string; username: string }
+  errors?: { detail?: string }[]
+}
+
+async function fetchMe(accessToken: string): Promise<{ id: string; username: string }> {
+  const res = await fetch(`${X_API_BASE}/users/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  const json = (await res.json().catch(() => ({}))) as MeResponse
+  if (!json.data) throw new Error(json.errors?.[0]?.detail ?? 'Could not resolve X user id')
+  return json.data
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -29,23 +45,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!verifier) return bounce(res, env.appBaseUrl, 'x_error=invalid_state')
 
     const token = await exchangeCode(env, code, verifier)
-    const expiryMs = Date.now() + token.expires_in * 1000
+    const me = await fetchMe(token.access_token)
     const secure = cookiesAreSecure(req)
 
     const cookieHeaders = [
-      // Access token lives as long as it's valid; refresh token long-lived.
-      serializeCookie(COOKIE.access, token.access_token, { maxAge: token.expires_in, secure }),
-      serializeCookie(COOKIE.expiry, String(expiryMs), { maxAge: 60 * 60 * 24 * 30, secure }),
+      // Per-account cookies for this newly connected account.
+      ...serializeAccountCookies(me.id, token, me.username, secure),
+      // Mark it the active account.
+      serializeCookie(COOKIE.activeAccount, me.id, { maxAge: 60 * 60 * 24 * 60, secure }),
       // Clear the one-shot PKCE cookies.
       clearCookie(COOKIE.verifier),
       clearCookie(COOKIE.state),
+      // Clear any legacy single-account cookies (the per-account set supersedes).
+      clearCookie(COOKIE.access),
+      clearCookie(COOKIE.refresh),
+      clearCookie(COOKIE.expiry),
     ]
-    if (token.refresh_token) {
-      cookieHeaders.push(serializeCookie(COOKIE.refresh, token.refresh_token, { maxAge: 60 * 60 * 24 * 60, secure }))
-    }
 
     res.setHeader('Set-Cookie', cookieHeaders)
-    return bounce(res, env.appBaseUrl, 'x_connected=1')
+    // Echo the account id so the frontend can immediately reconcile without a
+    // separate session probe.
+    return bounce(res, env.appBaseUrl, `x_connected=${encodeURIComponent(me.id)}`)
   } catch (e) {
     const env = safeEnv()
     return bounce(res, env, `x_error=${encodeURIComponent(e instanceof Error ? e.message : 'callback_failed')}`)

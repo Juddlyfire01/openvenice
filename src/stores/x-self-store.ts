@@ -1,7 +1,13 @@
 // Store for the OAuth-connected user's OWN X data (the "Profile" tab). Kept
-// separate from the target-oriented x-intel-store: this is a single subject
-// (you), sourced from the user-context OAuth session rather than the app-only
-// bearer token, and carries OAuth-only extras (bookmarks, likes).
+// separate from the target-oriented x-intel-store: this is sourced from the
+// user-context OAuth session rather than the app-only bearer token, and carries
+// OAuth-only extras (bookmarks, likes).
+//
+// Multi-account model: each connected X account (its own OAuth grant) has its
+// own SelfAccount entry keyed by X user id. `activeAccountId` selects which one
+// the UI shows; switching it triggers a server-side cookie change so subsequent
+// /api/x/proxy calls hit that account. Mirrors how useXIntelStore already
+// stores per-target reports.
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Profile, Post, Edge, IntelReportSnapshot, SynthesisSettings } from '../lib/x-intel/types'
@@ -14,12 +20,10 @@ export interface SelfSectionsRefreshed {
   likes?: string
 }
 
-interface XSelfState {
-  connected: boolean
-  // True while the OAuth round-trip is in flight (click → x.com → return) or
-  // while the post-redirect session probe is still resolving. Not persisted:
-  // re-derived on load from the URL params + sessionStorage bridge.
-  connecting: boolean
+/** One connected X account's cached data. */
+export interface SelfAccount {
+  id: string
+  username: string
   profile: Profile | null
   posts: Post[]
   bookmarks: Post[]
@@ -29,93 +33,262 @@ interface XSelfState {
   activeReportId: string | null
   refreshedAt: SelfSectionsRefreshed
   synthesisSettings: SynthesisSettings
-
-  setConnected: (connected: boolean) => void
-  setConnecting: (connecting: boolean) => void
-  setProfile: (profile: Profile | null) => void
-  setPosts: (posts: Post[]) => void
-  setBookmarks: (bookmarks: Post[]) => void
-  setLikes: (likes: Post[]) => void
-  setEdges: (edges: Edge[]) => void
-  markRefreshed: (section: keyof SelfSectionsRefreshed) => void
-  setSynthesisSettings: (patch: Partial<SynthesisSettings>) => void
-  appendReport: (snapshot: IntelReportSnapshot) => void
-  setActiveReport: (id: string) => void
-  deleteReport: (id: string) => void
-  /** Drop the live connection flags but keep all cached profile/posts/reports so
-   *  a reconnect is instant and the UI doesn't flash "no reports" while the
-   *  persist layer re-hydrates. Use `reset()` only for a hard wipe. */
-  disconnect: () => void
-  /** Hard-clear everything (cached data + flags). Not used by the disconnect UI. */
-  reset: () => void
 }
 
-const EMPTY = {
-  profile: null,
-  posts: [] as Post[],
-  bookmarks: [] as Post[],
-  likes: [] as Post[],
-  edges: [] as Edge[],
-  reportHistory: [] as IntelReportSnapshot[],
-  activeReportId: null as string | null,
-  refreshedAt: {} as SelfSectionsRefreshed,
-  synthesisSettings: DEFAULT_SYNTHESIS_SETTINGS,
+function emptyAccount(id: string, username: string, synthesisSettings: SynthesisSettings): SelfAccount {
+  return {
+    id,
+    username,
+    profile: null,
+    posts: [],
+    bookmarks: [],
+    likes: [],
+    edges: [],
+    reportHistory: [],
+    activeReportId: null,
+    refreshedAt: {},
+    synthesisSettings,
+  }
+}
+
+interface XSelfState {
+  /** Per-account cache keyed by X user id. */
+  accounts: Record<string, SelfAccount>
+  /** Display order for the rail (X user ids). */
+  accountOrder: string[]
+  /** The currently-selected account; matches the server-side x_active_account. */
+  activeAccountId: string | null
+  /** True while the OAuth round-trip is in flight. Not persisted. */
+  connecting: boolean
+  /** True when at least one account has a live server session. Not persisted —
+   *  re-derived from the session probe by reconcileAccounts(). Kept for the
+   *  many components that gate on `connected` (header, rails, refresh buttons). */
+  connected: boolean
+  defaultSynthesisSettings: SynthesisSettings
+
+  // Account lifecycle
+  upsertAccount: (account: { id: string; username: string }) => void
+  removeAccount: (id: string) => void
+  setActiveAccount: (id: string | null) => void
+  setConnecting: (connecting: boolean) => void
+  setConnected: (connected: boolean) => void
+  setDefaultSynthesisSettings: (s: SynthesisSettings) => void
+
+  // Per-account mutations (operate on the active account when id omitted)
+  updateAccount: (id: string, patch: Partial<SelfAccount>) => void
+  setProfile: (id: string, profile: Profile | null) => void
+  setPosts: (id: string, posts: Post[]) => void
+  setBookmarks: (id: string, bookmarks: Post[]) => void
+  setLikes: (id: string, likes: Post[]) => void
+  setEdges: (id: string, edges: Edge[]) => void
+  markRefreshed: (id: string, section: keyof SelfSectionsRefreshed) => void
+  setSynthesisSettings: (id: string, patch: Partial<SynthesisSettings>) => void
+  appendReport: (id: string, snapshot: IntelReportSnapshot) => void
+  setActiveReport: (id: string, reportId: string) => void
+  deleteReport: (id: string, reportId: string) => void
+
+  /** Drop all live connection flags but keep cached data. */
+  disconnectAll: () => void
+  /** Hard-clear everything (cached data + flags). */
+  reset: () => void
 }
 
 export const useXSelfStore = create<XSelfState>()(
   persist(
     (set) => ({
-      connected: false,
+      accounts: {},
+      accountOrder: [],
+      activeAccountId: null,
       connecting: false,
-      ...EMPTY,
+      connected: false,
+      defaultSynthesisSettings: DEFAULT_SYNTHESIS_SETTINGS,
 
-      setConnected: (connected) => set({ connected }),
-      setConnecting: (connecting) => set({ connecting }),
-      setProfile: (profile) => set({ profile }),
-      setPosts: (posts) => set({ posts }),
-      setBookmarks: (bookmarks) => set({ bookmarks }),
-      setLikes: (likes) => set({ likes }),
-      setEdges: (edges) => set({ edges }),
-      markRefreshed: (section) =>
-        set((s) => ({ refreshedAt: { ...s.refreshedAt, [section]: new Date().toISOString() } })),
-
-      setSynthesisSettings: (patch) =>
-        set((s) => ({ synthesisSettings: { ...s.synthesisSettings, ...patch } })),
-
-      appendReport: (snapshot) =>
-        set((s) => ({ reportHistory: [snapshot, ...s.reportHistory], activeReportId: snapshot.id })),
-      setActiveReport: (id) =>
-        set((s) => (s.reportHistory.some((r) => r.id === id) ? { activeReportId: id } : s)),
-      deleteReport: (id) =>
+      upsertAccount: ({ id, username }) =>
         set((s) => {
-          const reportHistory = s.reportHistory.filter((r) => r.id !== id)
-          const activeReportId = s.activeReportId === id ? (reportHistory[0]?.id ?? null) : s.activeReportId
-          return { reportHistory, activeReportId }
+          if (s.accounts[id]) {
+            // Refresh username only (profile/posts kept).
+            return { accounts: { ...s.accounts, [id]: { ...s.accounts[id], username } } }
+          }
+          return {
+            accounts: { ...s.accounts, [id]: emptyAccount(id, username, s.defaultSynthesisSettings) },
+            accountOrder: [...s.accountOrder, id],
+          }
         }),
 
-      // Soft-disconnect: drop the live connection flags but keep all cached
-      // profile/posts/bookmarks/likes/reports so a reconnect is instant and the
-      // UI doesn't flash empty states while the persist layer re-hydrates. The
-      // server-side logout call is the caller's responsibility (selfLogout()).
-      disconnect: () => set({ connected: false, connecting: false }),
+      removeAccount: (id) =>
+        set((s) => {
+          const accounts = { ...s.accounts }
+          delete accounts[id]
+          const accountOrder = s.accountOrder.filter((a) => a !== id)
+          const activeAccountId = s.activeAccountId === id ? (accountOrder[0] ?? null) : s.activeAccountId
+          return { accounts, accountOrder, activeAccountId }
+        }),
 
-      // Hard-clear everything (flags + cached data). Not used by the disconnect UI.
-      reset: () => set({ connected: false, connecting: false, ...EMPTY }),
+      setActiveAccount: (id) => set({ activeAccountId: id }),
+      setConnecting: (connecting) => set({ connecting }),
+      setConnected: (connected) => set({ connected }),
+      setDefaultSynthesisSettings: (settings) => set({ defaultSynthesisSettings: settings }),
+
+      updateAccount: (id, patch) =>
+        set((s) => {
+          const a = s.accounts[id]
+          if (!a) return s
+          return { accounts: { ...s.accounts, [id]: { ...a, ...patch } } }
+        }),
+
+      setProfile: (id, profile) =>
+        set((s) => {
+          const a = s.accounts[id]
+          if (!a) return s
+          return { accounts: { ...s.accounts, [id]: { ...a, profile } } }
+        }),
+
+      setPosts: (id, posts) =>
+        set((s) => {
+          const a = s.accounts[id]
+          if (!a) return s
+          return { accounts: { ...s.accounts, [id]: { ...a, posts } } }
+        }),
+
+      setBookmarks: (id, bookmarks) =>
+        set((s) => {
+          const a = s.accounts[id]
+          if (!a) return s
+          return { accounts: { ...s.accounts, [id]: { ...a, bookmarks } } }
+        }),
+
+      setLikes: (id, likes) =>
+        set((s) => {
+          const a = s.accounts[id]
+          if (!a) return s
+          return { accounts: { ...s.accounts, [id]: { ...a, likes } } }
+        }),
+
+      setEdges: (id, edges) =>
+        set((s) => {
+          const a = s.accounts[id]
+          if (!a) return s
+          return { accounts: { ...s.accounts, [id]: { ...a, edges } } }
+        }),
+
+      markRefreshed: (id, section) =>
+        set((s) => {
+          const a = s.accounts[id]
+          if (!a) return s
+          return {
+            accounts: {
+              ...s.accounts,
+              [id]: { ...a, refreshedAt: { ...a.refreshedAt, [section]: new Date().toISOString() } },
+            },
+          }
+        }),
+
+      setSynthesisSettings: (id, patch) =>
+        set((s) => {
+          const a = s.accounts[id]
+          if (!a) return s
+          return {
+            accounts: {
+              ...s.accounts,
+              [id]: { ...a, synthesisSettings: { ...a.synthesisSettings, ...patch } },
+            },
+          }
+        }),
+
+      appendReport: (id, snapshot) =>
+        set((s) => {
+          const a = s.accounts[id]
+          if (!a) return s
+          return {
+            accounts: {
+              ...s.accounts,
+              [id]: {
+                ...a,
+                reportHistory: [snapshot, ...a.reportHistory],
+                activeReportId: snapshot.id,
+              },
+            },
+          }
+        }),
+
+      setActiveReport: (id, reportId) =>
+        set((s) => {
+          const a = s.accounts[id]
+          if (!a) return s
+          if (!a.reportHistory.some((r) => r.id === reportId)) return s
+          return { accounts: { ...s.accounts, [id]: { ...a, activeReportId: reportId } } }
+        }),
+
+      deleteReport: (id, reportId) =>
+        set((s) => {
+          const a = s.accounts[id]
+          if (!a) return s
+          const reportHistory = a.reportHistory.filter((r) => r.id !== reportId)
+          const activeReportId = a.activeReportId === reportId ? (reportHistory[0]?.id ?? null) : a.activeReportId
+          return { accounts: { ...s.accounts, [id]: { ...a, reportHistory, activeReportId } } }
+        }),
+
+      disconnectAll: () => set({ connecting: false, connected: false, activeAccountId: null }),
+      reset: () => set({ accounts: {}, accountOrder: [], activeAccountId: null, connecting: false, connected: false }),
     }),
     {
       name: 'x-self-profile',
-      // Persist everything except the live `connected` flag, which is
-      // re-derived from the server session on load.
+      version: 2,
+      migrate: (persisted, version) => {
+        const state = (persisted ?? {}) as Partial<XSelfState> & {
+          // v1 flat fields
+          profile?: Profile | null
+          posts?: Post[]
+          bookmarks?: Post[]
+          likes?: Post[]
+          edges?: Edge[]
+          reportHistory?: IntelReportSnapshot[]
+          activeReportId?: string | null
+          refreshedAt?: SelfSectionsRefreshed
+          synthesisSettings?: SynthesisSettings
+          connected?: boolean
+        }
+        // v1 → v2: fold the legacy flat singleton into accounts[profile.id].
+        if (version < 2 && state.profile) {
+          const id = state.profile.id
+          const synthesis = state.synthesisSettings ?? DEFAULT_SYNTHESIS_SETTINGS
+          state.accounts = {
+            ...(state.accounts ?? {}),
+            [id]: {
+              id,
+              username: state.profile.username,
+              profile: state.profile,
+              posts: state.posts ?? [],
+              bookmarks: state.bookmarks ?? [],
+              likes: state.likes ?? [],
+              edges: state.edges ?? [],
+              reportHistory: state.reportHistory ?? [],
+              activeReportId: state.activeReportId ?? null,
+              refreshedAt: state.refreshedAt ?? {},
+              synthesisSettings: synthesis,
+            },
+          }
+          state.accountOrder = [id]
+          state.activeAccountId = id
+          state.defaultSynthesisSettings = state.defaultSynthesisSettings ?? synthesis
+          delete state.profile
+          delete state.posts
+          delete state.bookmarks
+          delete state.likes
+          delete state.edges
+          delete state.reportHistory
+          delete state.activeReportId
+          delete state.refreshedAt
+          delete state.synthesisSettings
+          delete state.connected
+        }
+        return state as XSelfState
+      },
       partialize: (s) => ({
-        profile: s.profile,
-        posts: s.posts,
-        bookmarks: s.bookmarks,
-        likes: s.likes,
-        edges: s.edges,
-        reportHistory: s.reportHistory,
-        activeReportId: s.activeReportId,
-        refreshedAt: s.refreshedAt,
-        synthesisSettings: s.synthesisSettings,
+        accounts: s.accounts,
+        accountOrder: s.accountOrder,
+        activeAccountId: s.activeAccountId,
+        defaultSynthesisSettings: s.defaultSynthesisSettings,
       }),
     },
   ),

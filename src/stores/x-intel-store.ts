@@ -86,6 +86,8 @@ interface XIntelState {
   reports: Record<string, IntelReport>
   activeTarget: string | null
   activeSubTab: IntelSubTab
+  /** Separate Profile/Feed/Network selection for the self ("me") top tab. */
+  activeSelfSubTab: IntelSubTab
   activeTopTab: IntelTopTab
   sessionCost: number
   /** Persisted all-time spend across all targets (survives target removal). */
@@ -97,6 +99,7 @@ interface XIntelState {
   removeTarget: (username: string) => void
   setActiveTarget: (username: string | null) => void
   setActiveSubTab: (tab: IntelSubTab) => void
+  setActiveSelfSubTab: (tab: IntelSubTab) => void
   setActiveTopTab: (tab: IntelTopTab) => void
   updateReport: (username: string, patch: Partial<IntelReport>) => void
   addCost: (username: string, cost: number) => void
@@ -129,6 +132,7 @@ export const useXIntelStore = create<XIntelState>()(
       reports: {},
       activeTarget: null,
       activeSubTab: 'profile',
+      activeSelfSubTab: 'profile',
       activeTopTab: 'me',
       sessionCost: 0,
       lifetimeTotal: 0,
@@ -225,6 +229,7 @@ export const useXIntelStore = create<XIntelState>()(
 
       setActiveTarget: (username) => set({ activeTarget: username }),
       setActiveSubTab: (tab) => set({ activeSubTab: tab }),
+      setActiveSelfSubTab: (tab) => set({ activeSelfSubTab: tab }),
       setActiveTopTab: (tab) => set({ activeTopTab: tab }),
 
       updateReport: (username, patch) => {
@@ -342,6 +347,7 @@ export const useXIntelStore = create<XIntelState>()(
         activeTarget: s.activeTarget,
         lifetimeTotal: s.lifetimeTotal,
         defaultSynthesisSettings: s.defaultSynthesisSettings,
+        activeSelfSubTab: s.activeSelfSubTab,
       }),
     },
   ),

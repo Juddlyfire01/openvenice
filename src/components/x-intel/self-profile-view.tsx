@@ -39,7 +39,8 @@ function ConnectCta() {
           Sign in with X (OAuth 2.0) to unlock your verified profile, your posts, and
           — unlike target analysis — your <b className="text-white/60">bookmarks</b> and{' '}
           <b className="text-white/60">likes</b>. Your account is analyzed with the same
-          intelligence report engine used for targets.
+          intelligence report engine used for targets. Connect as many accounts as you
+          manage and switch between them from the rail.
         </p>
       </div>
       <button
@@ -49,7 +50,7 @@ function ConnectCta() {
         Connect X
       </button>
       <p className="text-[10px] text-white/25 max-w-xs">
-        Tokens are held server-side in a secure, HttpOnly cookie — never exposed to the browser.
+        Tokens are held server-side in secure, HttpOnly cookies — never exposed to the browser.
       </p>
     </div>
   )
@@ -109,22 +110,35 @@ function XConnectFlow({
   )
 }
 
+/** "No account selected" — accounts exist in the rail but none is active (e.g.
+ *  just disconnected the last active one and the server hasn't picked a
+ *  successor yet). Prompts the user to pick one from the rail. */
+function NoActiveAccount() {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center gap-2 px-6">
+      <p className="text-[13px] text-white/50 font-medium">No account selected</p>
+      <p className="text-[11px] text-white/30 max-w-xs">Pick an account from the rail, or connect a new one.</p>
+    </div>
+  )
+}
+
+/** Profile sub-tab content for the self ("me") top tab. Renders the two-column
+ *  ProfileOverview + SelfReport split for the active connected account. The
+ *  rail + Profile/Feed/Network sub-tab bar live in IntelView; this component
+ *  is just the "Profile" sub-tab's body. Empty/connecting states overlay the
+ *  whole area. */
 export function SelfProfileView() {
   const connected = useXSelfStore((s) => s.connected)
   const connecting = useXSelfStore((s) => s.connecting)
-  const profile = useXSelfStore((s) => s.profile)
-  const posts = useXSelfStore((s) => s.posts)
-  const bookmarks = useXSelfStore((s) => s.bookmarks)
-  const likes = useXSelfStore((s) => s.likes)
-  const refreshedAt = useXSelfStore((s) => s.refreshedAt)
-  const synthesisSettings = useXSelfStore((s) => s.synthesisSettings)
+  const activeAccountId = useXSelfStore((s) => s.activeAccountId)
+  const account = useXSelfStore((s) => (s.activeAccountId ? s.accounts[s.activeAccountId] : undefined))
   const setSynthesisSettings = useXSelfStore((s) => s.setSynthesisSettings)
 
   // The zustand persist middleware hydrates from localStorage asynchronously.
   // On a fresh page load (incl. the OAuth redirect return) the store starts with
-  // empty defaults (reportHistory: [], profile: null) and then re-hydrates a
-  // frame or two later. Without tracking this we'd flash "No report yet" and
-  // kick off a redundant gather even when a cached profile exists on disk.
+  // empty defaults and then re-hydrates a frame or two later. Without tracking
+  // this we'd flash "No account" and kick off a redundant gather even when a
+  // cached profile exists on disk.
   const [hydrated, setHydrated] = useState(useXSelfStore.persist.hasHydrated())
   useEffect(() => {
     if (hydrated) return
@@ -136,6 +150,11 @@ export function SelfProfileView() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const profile = account?.profile ?? null
+  const posts = account?.posts ?? []
+  const bookmarks = account?.bookmarks ?? []
+  const likes = account?.likes ?? []
+
   const runRefresh = async () => {
     setBusy(true); setError(null)
     try { await gatherSelf() }
@@ -143,28 +162,28 @@ export function SelfProfileView() {
     finally { setBusy(false) }
   }
 
-  // After the shared session probe (app bootstrap or Intel mount), sync profile
-  // data — but only once the persist layer has hydrated, otherwise we'd gather
-  // even when a cached profile is about to reappear from localStorage.
+  // After the shared session probe, gather the active account's data — but only
+  // once the persist layer has hydrated, otherwise we'd gather even when a
+  // cached profile is about to reappear from localStorage.
   useEffect(() => {
-    if (!hydrated) return
+    if (!hydrated || !connected || !activeAccountId) return
+    const acc = useXSelfStore.getState().accounts[activeAccountId]
+    if (acc?.profile) return
     let cancelled = false
-    void refreshSelfSession().then((isConnected) => {
-      if (cancelled || !isConnected || useXSelfStore.getState().profile) return
-      setBusy(true)
-      setError(null)
-      gatherSelf()
-        .catch((e) => setError(e instanceof Error ? e.message : 'Gather failed'))
-        .finally(() => { if (!cancelled) setBusy(false) })
-    })
+    setBusy(true)
+    setError(null)
+    gatherSelf()
+      .catch((e) => setError(e instanceof Error ? e.message : 'Gather failed'))
+      .finally(() => { if (!cancelled) setBusy(false) })
     return () => { cancelled = true }
-  }, [hydrated])
+  }, [hydrated, connected, activeAccountId])
 
   const disconnect = async () => {
-    await selfLogout()
-    // Soft-disconnect: keep cached profile/posts/reports so a reconnect is
-    // instant and the UI never flashes empty states. reset() is a hard wipe.
-    useXSelfStore.getState().disconnect()
+    if (!activeAccountId) return
+    await selfLogout(activeAccountId)
+    useXSelfStore.getState().removeAccount(activeAccountId)
+    // Re-probe so the store reflects the server's new active account (or none).
+    await refreshSelfSession()
   }
 
   // OAuth round-trip in flight (click → x.com → return, or session probe still
@@ -172,13 +191,18 @@ export function SelfProfileView() {
   // Connect CTA so the user sees the connection process has begun.
   if (connecting) return <XConnectFlow phase="authorizing" />
 
-  if (!connected) return <ConnectCta />
+  // No accounts at all → first-time connect CTA. (The rail also shows a connect
+  // button, but the main area carries the explanatory copy.)
+  if (!connected && (useXSelfStore.getState().accountOrder.length === 0)) return <ConnectCta />
+
+  // Connected (or have remembered accounts) but none is active yet.
+  if (!activeAccountId || !account) return <NoActiveAccount />
 
   // Connected but no profile yet. If we're still waiting on persist hydration,
   // the profile may well be sitting in localStorage about to reappear — show the
   // syncing screen rather than flashing the empty state. Once hydrated (and
   // still no profile), this is the genuine first-gather phase right after OAuth.
-  if (connected && !profile) {
+  if (!profile) {
     return (
       <XConnectFlow
         phase="syncing"
@@ -198,7 +222,7 @@ export function SelfProfileView() {
           connected={connected}
           refreshing={busy}
           refreshError={error}
-          lastGatheredIso={refreshedAt.profile ?? profile?.gatheredAt}
+          lastGatheredIso={account.refreshedAt.profile ?? profile.gatheredAt}
           onRefresh={runRefresh}
           emptyHint="Fetch your profile, posts, bookmarks & likes in one pull."
           showYouBadge
@@ -210,15 +234,17 @@ export function SelfProfileView() {
             </div>
           }
           activity={profile ? computeActivity(profile, posts) : null}
-          synthesisSettings={synthesisSettings}
-          onSynthesisChange={setSynthesisSettings}
+          synthesisSettings={account.synthesisSettings}
+          onSynthesisChange={(patch) => setSynthesisSettings(activeAccountId, patch)}
           onDisconnect={disconnect}
         />
       </div>
 
-      {/* Right: report (reuses the target analytics + narrative pipeline) */}
+      {/* Right: report (reuses the target analytics + narrative pipeline).
+          `syncing` = a gather is in flight, so the report panel shows a spinner
+          instead of "No report yet" until posts land and analytics can compute. */}
       <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
-        <SelfReport />
+        <SelfReport syncing={busy && posts.length === 0} />
       </div>
     </div>
   )

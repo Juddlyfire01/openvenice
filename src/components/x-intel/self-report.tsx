@@ -47,16 +47,19 @@ function ExtrasList({ title, posts, empty }: { title: string; posts: Post[]; emp
   )
 }
 
-export function SelfReport() {
-  const profile = useXSelfStore((s) => s.profile)
-  const posts = useXSelfStore((s) => s.posts)
-  const edges = useXSelfStore((s) => s.edges)
-  const bookmarks = useXSelfStore((s) => s.bookmarks)
-  const likes = useXSelfStore((s) => s.likes)
-  const reportHistory = useXSelfStore((s) => s.reportHistory)
-  const activeReportId = useXSelfStore((s) => s.activeReportId)
+export function SelfReport({ syncing = false }: { syncing?: boolean }) {
+  const activeAccountId = useXSelfStore((s) => s.activeAccountId)
+  const account = useXSelfStore((s) => (s.activeAccountId ? s.accounts[s.activeAccountId] : undefined))
   const setActiveReport = useXSelfStore((s) => s.setActiveReport)
   const deleteReport = useXSelfStore((s) => s.deleteReport)
+
+  const profile = account?.profile ?? null
+  const posts = account?.posts ?? []
+  const edges = account?.edges ?? []
+  const bookmarks = account?.bookmarks ?? []
+  const likes = account?.likes ?? []
+  const reportHistory = account?.reportHistory ?? []
+  const activeReportId = account?.activeReportId ?? null
 
   // The persist middleware hydrates from localStorage asynchronously. On a
   // fresh page load (incl. the OAuth redirect return) `reportHistory` starts
@@ -107,8 +110,8 @@ export function SelfReport() {
       <ReportTimeline
         history={reportHistory}
         activeId={active?.id ?? null}
-        onSelect={(id) => setActiveReport(id)}
-        onDelete={(id) => deleteReport(id)}
+        onSelect={(id) => activeAccountId && setActiveReport(activeAccountId, id)}
+        onDelete={(id) => activeAccountId && deleteReport(activeAccountId, id)}
       />
 
       {active ? (
@@ -129,12 +132,14 @@ export function SelfReport() {
           </p>
           <AnalyticsPanels a={liveAnalytics} posts={posts} onAddTarget={noAdd} />
         </div>
-      ) : !hydrated ? (
-        // Persist layer hasn't hydrated yet — reports may be sitting in
-        // localStorage about to reappear. Don't flash "No report yet."
+      ) : !hydrated || syncing ? (
+        // Either the persist layer hasn't hydrated yet (reports may be about to
+        // reappear from localStorage) or a sync is in flight (posts are still
+        // being fetched, so live analytics can't be computed yet). In both cases
+        // show a spinner rather than flashing "No report yet."
         <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
           <Spinner className="h-4 w-4 text-white/30" />
-          <p className="text-[11px] text-white/25">Loading reports…</p>
+          <p className="text-[11px] text-white/25">{syncing ? 'Syncing your data…' : 'Loading reports…'}</p>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-2">

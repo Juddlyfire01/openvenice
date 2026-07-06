@@ -22,13 +22,85 @@ export const X_SCOPES = [
 ] as const
 
 // Cookie names. All are HttpOnly so client JS can never read the token/verifier.
+//
+// Multi-account model: each connected X account gets its own cookie triplet
+// suffixed with `__<accountId>` (e.g. x_access_token__17000000). A separate
+// `x_active_account` cookie records which account the proxy should use.
+//
+// Legacy single-account cookies (x_access_token, x_refresh_token, x_token_expiry)
+// are kept only as a fallback so existing users keep working until they
+// re-connect, at which point the callback stamps per-account cookies.
 export const COOKIE = {
+  // Transient PKCE cookies (login round-trip only).
   verifier: 'x_pkce_verifier',
   state: 'x_oauth_state',
+  // Legacy single-account cookies (fallback only).
   access: 'x_access_token',
   refresh: 'x_refresh_token',
   expiry: 'x_token_expiry', // epoch ms when the access token expires
+  // Multi-account cookies.
+  activeAccount: 'x_active_account', // holds the active X account id
+  accountLabel: 'x_account',          // x_account__<id> = username (HttpOnly)
 } as const
+
+/** Per-account cookie name for the access token: `x_access_token__<id>`. */
+export function accessCookieName(accountId: string): string {
+  return `${COOKIE.access}__${accountId}`
+}
+/** Per-account cookie name for the refresh token: `x_refresh_token__<id>`. */
+export function refreshCookieName(accountId: string): string {
+  return `${COOKIE.refresh}__${accountId}`
+}
+/** Per-account cookie name for the token expiry: `x_token_expiry__<id>`. */
+export function expiryCookieName(accountId: string): string {
+  return `${COOKIE.expiry}__${accountId}`
+}
+/** Per-account cookie name for the username label: `x_account__<id>`. */
+export function accountLabelCookieName(accountId: string): string {
+  return `${COOKIE.accountLabel}__${accountId}`
+}
+
+/** Set-Cookie headers that record one connected account's tokens + label. */
+export function serializeAccountCookies(
+  accountId: string,
+  token: { access_token: string; refresh_token?: string; expires_in: number },
+  username: string,
+  secure: boolean,
+): string[] {
+  const expiryMs = Date.now() + token.expires_in * 1000
+  const out = [
+    serializeCookie(accessCookieName(accountId), token.access_token, { maxAge: token.expires_in, secure }),
+    serializeCookie(expiryCookieName(accountId), String(expiryMs), { maxAge: 60 * 60 * 24 * 30, secure }),
+    serializeCookie(accountLabelCookieName(accountId), username, { maxAge: 60 * 60 * 24 * 60, secure }),
+  ]
+  if (token.refresh_token) {
+    out.push(serializeCookie(refreshCookieName(accountId), token.refresh_token, { maxAge: 60 * 60 * 24 * 60, secure }))
+  }
+  return out
+}
+
+/** Set-Cookie headers that expire one account's cookies + label. */
+export function clearAccountCookies(accountId: string): string[] {
+  return [
+    clearCookie(accessCookieName(accountId)),
+    clearCookie(refreshCookieName(accountId)),
+    clearCookie(expiryCookieName(accountId)),
+    clearCookie(accountLabelCookieName(accountId)),
+  ]
+}
+
+/** Parse `x_account__<id>=<username>` cookies into a list of known accounts. */
+export function parseAccountLabels(cookieHeader: string | undefined): { id: string; username: string }[] {
+  const cookies = parseCookies(cookieHeader)
+  const prefix = `${COOKIE.accountLabel}__`
+  const out: { id: string; username: string }[] = []
+  for (const [name, username] of Object.entries(cookies)) {
+    if (name.startsWith(prefix) && username) {
+      out.push({ id: name.slice(prefix.length), username })
+    }
+  }
+  return out
+}
 
 export interface XOAuthEnv {
   clientId: string

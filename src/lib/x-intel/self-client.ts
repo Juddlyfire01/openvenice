@@ -5,6 +5,11 @@
 // browser never sees the token: every call goes through our /api/x/proxy/*
 // serverless function, which attaches the token and forwards to the X API.
 //
+// Multi-account: the server stamps one cookie triplet per connected X account
+// and a single x_active_account cookie selects which one the proxy uses.
+// switchActiveAccount POSTs to /api/x/active to flip that cookie; subsequent
+// proxy calls hit the newly-active account.
+//
 // In dev there are no serverless functions, so the Vite proxy forwards /api to
 // `vercel dev` (see vite.config.ts). Requests always include credentials so the
 // auth cookies ride along.
@@ -13,14 +18,26 @@ import { useXSelfStore } from '../../stores/x-self-store'
 
 const PROXY_BASE = '/api/x/proxy'
 
-/** Whether the user has a live OAuth session (connected their own account). */
-export async function getSelfSession(): Promise<{ connected: boolean }> {
+export interface SelfAccountRef {
+  id: string
+  username: string
+}
+
+export interface SelfSession {
+  connected: boolean
+  accountId?: string
+  username?: string
+  accounts: SelfAccountRef[]
+}
+
+/** Whether the user has a live OAuth session, plus the full account list. */
+export async function getSelfSession(): Promise<SelfSession> {
   try {
     const res = await fetch('/api/x/session', { credentials: 'same-origin', cache: 'no-store' })
-    if (!res.ok) return { connected: false }
-    return (await res.json()) as { connected: boolean }
+    if (!res.ok) return { connected: false, accounts: [] }
+    return (await res.json()) as SelfSession
   } catch {
-    return { connected: false }
+    return { connected: false, accounts: [] }
   }
 }
 
@@ -37,9 +54,27 @@ export function beginSelfLogin(): void {
   }))
 }
 
-export async function selfLogout(): Promise<void> {
+/** Switch the active X account server-side (sets x_active_account cookie). */
+export async function switchActiveAccount(accountId: string): Promise<{ ok: boolean; username?: string }> {
   try {
-    await fetch('/api/x/logout', { method: 'POST', credentials: 'same-origin' })
+    const res = await fetch(`/api/x/active?account=${encodeURIComponent(accountId)}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    })
+    if (!res.ok) return { ok: false }
+    const json = (await res.json()) as { ok: boolean; username?: string }
+    return { ok: json.ok, username: json.username }
+  } catch {
+    return { ok: false }
+  }
+}
+
+/** Logout. With an accountId, disconnects only that one account; without it,
+ *  clears everything (legacy logout-all). */
+export async function selfLogout(accountId?: string): Promise<void> {
+  try {
+    const qs = accountId ? `?account=${encodeURIComponent(accountId)}` : ''
+    await fetch(`/api/x/logout${qs}`, { method: 'POST', credentials: 'same-origin' })
   } catch { /* best-effort */ }
 }
 

@@ -7,6 +7,9 @@ import { ProfileReport } from './profile-report'
 import { NetworkGraph } from './network-graph'
 import { ComposeWorkspace } from '../compose/compose-workspace'
 import { SelfProfileView } from './self-profile-view'
+import { SelfRail } from './self-rail'
+import { SelfFeed } from './self-feed'
+import { SelfNetwork } from './self-network'
 import { runGather } from '../../lib/x-intel/orchestrate'
 import { refreshSelfSession } from '../../lib/x-intel/self-orchestrate'
 import { syncComposeContextFromActiveTarget } from '../../lib/compose/open-compose'
@@ -14,18 +17,28 @@ import { SubTabs } from '../ui/sub-tabs'
 
 // Top-level split: your own OAuth profile, target analysis, and the composer.
 const TOP_TABS = [
-  { id: 'me' as const, label: 'Profile' },
-  { id: 'targets' as const, label: 'Targets' },
+  { id: 'me' as const, label: 'You' },
+  { id: 'targets' as const, label: 'Others' },
   { id: 'post' as const, label: 'Post' },
+]
+
+// The self ("me") sub-tab bar mirrors the targets one: Profile/Feed/Network.
+// The "Profile" label is singular (it's your own profile), unlike targets which
+// pluralize to "Targets" when more than one is loaded.
+const SELF_SUB_TABS = [
+  { id: 'profile' as const, label: 'Profile' },
+  { id: 'feed' as const, label: 'Feed' },
+  { id: 'network' as const, label: 'Network' },
 ]
 
 export function IntelView() {
   const activeSubTab = useXIntelStore((s) => s.activeSubTab)
   const setActiveSubTab = useXIntelStore((s) => s.setActiveSubTab)
+  const activeSelfSubTab = useXIntelStore((s) => s.activeSelfSubTab)
+  const setActiveSelfSubTab = useXIntelStore((s) => s.setActiveSelfSubTab)
   const activeTopTab = useXIntelStore((s) => s.activeTopTab)
   const setActiveTopTab = useXIntelStore((s) => s.setActiveTopTab)
   const activeTarget = useXIntelStore((s) => s.activeTarget)
-  const targetCount = useXIntelStore((s) => s.targets.length)
   const prevTopTab = useRef(activeTopTab)
 
   // Entering Post from Profile/Targets: carry the active target into compose context.
@@ -36,11 +49,8 @@ export function IntelView() {
     prevTopTab.current = activeTopTab
   }, [activeTopTab, activeTarget])
 
-  // The old per-target "Profile" sub-tab is renamed to Target/Targets, plural
-  // only when more than one target is loaded (dynamic per your spec).
-  const targetLabel = targetCount > 1 ? 'Targets' : 'Target'
   const subTabs = [
-    { id: 'profile' as const, label: targetLabel },
+    { id: 'profile' as const, label: 'Profile' },
     { id: 'feed' as const, label: 'Feed' },
     { id: 'network' as const, label: 'Network' },
   ]
@@ -64,13 +74,25 @@ export function IntelView() {
     <div className="flex flex-col h-full min-h-0">
       <SubTabs tabs={TOP_TABS} value={activeTopTab} onChange={setActiveTopTab} className="px-4" />
 
-      {activeTopTab === 'me' ? (
-        <div className="flex-1 min-h-0">
-          <SelfProfileView />
-        </div>
-      ) : activeTopTab === 'post' ? (
+      {activeTopTab === 'post' ? (
         <div className="flex-1 min-h-0">
           <ComposeWorkspace />
+        </div>
+      ) : activeTopTab === 'me' ? (
+        // Profile ("me") tab: rail + Profile/Feed/Network sub-tab bar + content,
+        // mirroring the Targets layout. SelfRail switches the active connected
+        // account; the content swaps between the self profile split / feed / network.
+        <div className="flex flex-1 min-h-0">
+          <SelfRail />
+
+          <div className="flex flex-col flex-1 min-w-0">
+            <SubTabs tabs={SELF_SUB_TABS} value={activeSelfSubTab} onChange={setActiveSelfSubTab} className="px-4" size="sm" />
+            <div className="flex-1 min-h-0">
+              {activeSelfSubTab === 'profile' && <SelfProfileView />}
+              {activeSelfSubTab === 'feed' && <SelfFeed />}
+              {activeSelfSubTab === 'network' && <SelfNetwork />}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="flex flex-1 min-h-0">

@@ -3,6 +3,7 @@ import { useXIntelStore } from '../../stores/x-intel-store'
 import { useXSelfStore } from '../../stores/x-self-store'
 import { refreshProfile, runGather } from '../../lib/x-intel/orchestrate'
 import { selfLogout } from '../../lib/x-intel/self-client'
+import { refreshSelfSession } from '../../lib/x-intel/self-orchestrate'
 import { linkify } from '../../lib/x-intel/linkify'
 import { ensureProfileShape, profileNeedsLinkRefresh } from '../../lib/x-intel/normalize'
 import { computeActivity } from '../../lib/x-intel/activity'
@@ -88,10 +89,13 @@ export function ProfileCard() {
   }
 
   const disconnect = async () => {
-    await selfLogout()
+    const activeId = useXSelfStore.getState().activeAccountId
+    if (!activeId) return
     // Soft-disconnect: keep cached profile/posts/reports so a reconnect is
     // instant and the UI never flashes empty states. reset() is a hard wipe.
-    useXSelfStore.getState().disconnect()
+    await selfLogout(activeId)
+    useXSelfStore.getState().removeAccount(activeId)
+    await refreshSelfSession()
   }
 
   const profile = report?.profile ? ensureProfileShape(report.profile) : null

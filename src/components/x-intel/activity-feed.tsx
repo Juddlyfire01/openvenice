@@ -9,43 +9,37 @@ import { cn, formatTokens } from '../../lib/utils'
 type KindFilter = 'all' | Post['kind']
 const FILTERS: KindFilter[] = ['all', 'original', 'reply', 'quote', 'retweet']
 
-export function ActivityFeed() {
-  const activeTarget = useXIntelStore((s) => s.activeTarget)
-  const report = useXIntelStore((s) => (s.activeTarget ? s.reports[s.activeTarget] : undefined))
-  const updateReport = useXIntelStore((s) => s.updateReport)
-  const connected = useXSelfStore((s) => s.connected)
+export interface ActivityFeedInnerProps {
+  posts: Post[]
+  watch: boolean
+  onToggleWatch: (watch: boolean) => void
+  refreshing: boolean
+  refreshError: string | null
+  onRefresh: () => void
+  lastGatheredIso?: string
+  connected: boolean
+  /** Shown when no posts gathered yet. */
+  emptyTitle?: string
+  emptyHint: string
+  emptyActionLabel?: string
+}
+
+/** Presentational activity feed — props-driven so it can be wired to either a
+ *  target (via useXIntelStore) or the connected self account (via useXSelfStore). */
+export function ActivityFeedInner({
+  posts, watch, onToggleWatch, refreshing, refreshError, onRefresh,
+  lastGatheredIso, connected, emptyTitle = 'No posts gathered yet', emptyHint,
+  emptyActionLabel = 'Gather posts',
+}: ActivityFeedInnerProps) {
   const [filter, setFilter] = useState<KindFilter>('all')
-  const [refreshing, setRefreshing] = useState(false)
-  const [refreshError, setRefreshError] = useState<string | null>(null)
 
-  const runRefresh = async () => {
-    if (!activeTarget) return
-    setRefreshing(true)
-    setRefreshError(null)
-    try {
-      await refreshPosts(activeTarget)
-    } catch (e) {
-      setRefreshError(e instanceof Error ? e.message : 'Refresh failed')
-    } finally {
-      setRefreshing(false)
-    }
-  }
-
-  if (!activeTarget || !report) {
-    return <div className="flex items-center justify-center h-full text-[12px] text-white/15">No target selected</div>
-  }
-
-  // Per-section refresh timestamp (bumps even on a zero-new-posts pull), falling
-  // back to the newest post's gatheredAt for reports persisted before this field.
-  const lastGathered = report.refreshedAt?.feed ?? report.posts[0]?.gatheredAt
-
-  if (report.posts.length === 0) {
+  if (posts.length === 0) {
     return (
       <SectionEmpty
-        title="No posts gathered yet"
-        hint={connected ? `Fetch @${activeTarget}'s recent posts (up to 50 per pull).` : 'Connect your X account first (header → Connect X).'}
-        actionLabel="Gather posts"
-        onAction={runRefresh}
+        title={emptyTitle}
+        hint={emptyHint}
+        actionLabel={emptyActionLabel}
+        onAction={onRefresh}
         busy={refreshing}
         disabled={!connected}
         error={refreshError}
@@ -53,7 +47,7 @@ export function ActivityFeed() {
     )
   }
 
-  const posts = filter === 'all' ? report.posts : report.posts.filter((p) => p.kind === filter)
+  const filtered = filter === 'all' ? posts : posts.filter((p) => p.kind === filter)
 
   return (
     <div className="flex flex-col h-full">
@@ -77,26 +71,26 @@ export function ActivityFeed() {
         <label className="flex items-center gap-1.5 text-[10px] text-white/25 cursor-pointer">
           <input
             type="checkbox"
-            checked={report.watch}
-            onChange={(e) => updateReport(activeTarget, { watch: e.target.checked })}
+            checked={watch}
+            onChange={(e) => onToggleWatch(e.target.checked)}
             className="accent-white w-3 h-3"
           />
           Watch (refresh on open)
         </label>
         <SectionRefresh
-          onClick={runRefresh}
+          onClick={onRefresh}
           busy={refreshing}
           disabled={!connected}
-          lastGatheredIso={lastGathered}
+          lastGatheredIso={lastGatheredIso}
           error={refreshError}
         />
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
-        {posts.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="py-8 text-center text-[11px] text-white/10">No posts gathered yet — re-gather from the target rail</div>
         ) : (
-          posts.map((p) => (
+          filtered.map((p) => (
             <div key={p.id} id={`post-${p.id}`} className="border border-[var(--color-border-faint)] rounded-lg p-3 bg-[var(--color-bg-raised)]">
               <div className="flex items-center gap-2 text-[10px] text-white/20 mb-1.5">
                 <span className={cn(
@@ -121,5 +115,50 @@ export function ActivityFeed() {
         )}
       </div>
     </div>
+  )
+}
+
+/** Target-side wrapper: pulls the active target's posts from useXIntelStore. */
+export function ActivityFeed() {
+  const activeTarget = useXIntelStore((s) => s.activeTarget)
+  const report = useXIntelStore((s) => (s.activeTarget ? s.reports[s.activeTarget] : undefined))
+  const updateReport = useXIntelStore((s) => s.updateReport)
+  const connected = useXSelfStore((s) => s.connected)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
+
+  const runRefresh = async () => {
+    if (!activeTarget) return
+    setRefreshing(true)
+    setRefreshError(null)
+    try {
+      await refreshPosts(activeTarget)
+    } catch (e) {
+      setRefreshError(e instanceof Error ? e.message : 'Refresh failed')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  if (!activeTarget || !report) {
+    return <div className="flex items-center justify-center h-full text-[12px] text-white/15">No target selected</div>
+  }
+
+  // Per-section refresh timestamp (bumps even on a zero-new-posts pull), falling
+  // back to the newest post's gatheredAt for reports persisted before this field.
+  const lastGathered = report.refreshedAt?.feed ?? report.posts[0]?.gatheredAt
+
+  return (
+    <ActivityFeedInner
+      posts={report.posts}
+      watch={report.watch}
+      onToggleWatch={(w) => updateReport(activeTarget, { watch: w })}
+      refreshing={refreshing}
+      refreshError={refreshError}
+      onRefresh={runRefresh}
+      lastGatheredIso={lastGathered}
+      connected={connected}
+      emptyHint={connected ? `Fetch @${activeTarget}'s recent posts (up to 50 per pull).` : 'Connect your X account first (header → Connect X).'}
+    />
   )
 }
