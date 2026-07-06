@@ -15,6 +15,8 @@
 // malicious code running on this same origin (which could ask the key to decrypt
 // for it). That's inherent to any browser-local scheme without a passphrase.
 
+import { b64encode, b64decode } from './base64'
+
 const DB_NAME = 'venice-intel-crypto'
 const STORE_NAME = 'keys'
 const KEY_ID = 'intel-data-key-v1'
@@ -72,28 +74,6 @@ export function getDeviceKey(): Promise<CryptoKey> {
     throw err
   })
   return keyPromise
-}
-
-// Chunked: spreading a large buffer into fromCharCode's arguments overflows the
-// call stack (RangeError) once ciphertext exceeds ~100KB — which a gathered
-// corpus + report history easily does. That made encryptString throw, and the
-// fail-closed storage layer silently skipped persisting, so reports vanished on
-// reload/reconnect. Encode in 32KB slices instead.
-const b64encode = (buf: ArrayBuffer): string => {
-  const bytes = new Uint8Array(buf)
-  const CHUNK = 0x8000
-  let bin = ''
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
-  }
-  return btoa(bin)
-}
-
-const b64decode = (str: string): Uint8Array<ArrayBuffer> => {
-  const bin = atob(str)
-  const buf = new Uint8Array(new ArrayBuffer(bin.length))
-  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i)
-  return buf
 }
 
 /** Encrypt a UTF-8 string to a compact "iv.ct" base64 envelope. */

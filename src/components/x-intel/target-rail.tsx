@@ -24,6 +24,11 @@ export function TargetRail() {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const handleRemove = (username: string) => {
+    if (!confirm(`Remove @${username} from the Others rail? Gathered data stays encrypted on this device and is revived if you add them again. Clear it anytime from Settings → Data & privacy.`)) return
+    removeTarget(username)
+  }
+
   const gather = async (username: string) => {
     setBusy(username)
     setError(null)
@@ -116,8 +121,8 @@ export function TargetRail() {
                   </svg>
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); removeTarget(t) }}
-                  title="Remove"
+                  onClick={(e) => { e.stopPropagation(); handleRemove(t) }}
+                  title="Remove from rail"
                   className="opacity-0 group-hover:opacity-100 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-all shrink-0 p-0.5"
                 >
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>

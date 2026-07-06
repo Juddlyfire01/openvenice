@@ -41,12 +41,14 @@ export function DataPrivacySection() {
   const purgeAllAccounts = useXSelfStore((s) => s.purgeAllAccounts)
 
   const reports = useXIntelStore((s) => s.reports)
-  const removeTarget = useXIntelStore((s) => s.removeTarget)
+  const targetsOnRail = useXIntelStore((s) => s.targets)
+  const purgeTarget = useXIntelStore((s) => s.purgeTarget)
   const clearAllTargets = useXIntelStore((s) => s.clearAllTargets)
 
   const selfIds = Object.keys(accounts)
   const targetKeys = Object.keys(reports)
   const connectedSet = new Set(accountOrder)
+  const railSet = new Set(targetsOnRail.map((t) => t.toLowerCase()))
 
   const dataSummary = (postCount: number, reportCount: number, extra?: string): string => {
     const parts = [`${postCount} post${postCount === 1 ? '' : 's'}`, `${reportCount} report${reportCount === 1 ? '' : 's'}`]
@@ -63,8 +65,8 @@ export function DataPrivacySection() {
       <p className="text-[12px] text-[var(--color-text-tertiary)] leading-relaxed">
         All gathered X data (profiles, posts, bookmarks, likes, and generated reports) is
         stored only on this device, encrypted at rest with a device-bound key. Disconnecting
-        an account keeps its data for a fast reconnect — use the controls below to permanently
-        erase it.
+        an account or removing a target from the Others rail keeps its data cached — use the
+        controls below to permanently erase it.
       </p>
 
       {/* Your own accounts */}
@@ -125,12 +127,17 @@ export function DataPrivacySection() {
           <div className="flex flex-col gap-1.5">
             {targetKeys.map((key) => {
               const r = reports[key]
+              const onRail = railSet.has(key.toLowerCase())
               return (
                 <DataRow
                   key={key}
                   title={`@${r.username}`}
-                  subtitle={dataSummary(r.posts.length, r.reportHistory.length)}
-                  onClear={() => confirmPurge(`@${r.username}`, () => removeTarget(key))}
+                  subtitle={dataSummary(
+                    r.posts.length,
+                    r.reportHistory.length,
+                    onRail ? 'in Others rail' : 'removed from rail (cached)',
+                  )}
+                  onClear={() => confirmPurge(`@${r.username}`, () => purgeTarget(key))}
                 />
               )
             })}

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { VENICE_SERVER_FRONTED, VENICE_FRONTED_SENTINEL } from '../lib/venice-config'
+import { b64encode, b64decode } from '../lib/base64'
 
 const SESSION_KEY = 'venice-auth'
 const ENCRYPTED_KEY = 'venice-auth-enc'
@@ -17,16 +18,6 @@ interface AuthState {
   setApiKey: (key: string, remember?: { passphrase: string }) => Promise<void>
   unlock: (passphrase: string) => Promise<boolean>
   clearApiKey: () => void
-}
-
-const b64encode = (buf: ArrayBuffer): string =>
-  btoa(String.fromCharCode(...new Uint8Array(buf)))
-
-const b64decode = (str: string): Uint8Array<ArrayBuffer> => {
-  const bin = atob(str)
-  const buf = new Uint8Array(new ArrayBuffer(bin.length))
-  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i)
-  return buf
 }
 
 async function deriveKey(passphrase: string, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {

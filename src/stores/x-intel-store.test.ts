@@ -50,13 +50,34 @@ describe('useXIntelStore', () => {
     expect(useXIntelStore.getState().targets).toHaveLength(1)
   })
 
-  it('removeTarget deletes report and deselects', () => {
+  it('removeTarget soft-removes from rail but keeps cached report', () => {
     useXIntelStore.getState().addTarget('ErikVoorhees')
+    useXIntelStore.getState().updateReport('ErikVoorhees', { watch: true })
     useXIntelStore.getState().removeTarget('ErikVoorhees')
+    const s = useXIntelStore.getState()
+    expect(s.targets).toEqual([])
+    expect(s.reports['ErikVoorhees'].watch).toBe(true)
+    expect(s.activeTarget).toBeNull()
+  })
+
+  it('purgeTarget hard-deletes cached report and deselects', () => {
+    useXIntelStore.getState().addTarget('ErikVoorhees')
+    useXIntelStore.getState().purgeTarget('ErikVoorhees')
     const s = useXIntelStore.getState()
     expect(s.targets).toEqual([])
     expect(s.reports['ErikVoorhees']).toBeUndefined()
     expect(s.activeTarget).toBeNull()
+  })
+
+  it('addTarget revives a soft-removed target with its cached data', () => {
+    const store = useXIntelStore.getState()
+    store.addTarget('ErikVoorhees')
+    store.appendReport('ErikVoorhees', makeSnapshot('a'))
+    store.removeTarget('ErikVoorhees')
+    store.addTarget('erikvoorhees')
+    const r = useXIntelStore.getState().reports['ErikVoorhees']
+    expect(useXIntelStore.getState().targets).toEqual(['ErikVoorhees'])
+    expect(r.reportHistory.map((s) => s.id)).toEqual(['a'])
   })
 
   it('addCost accumulates visit, lifetime, and per-target cost', () => {

@@ -97,7 +97,10 @@ interface XIntelState {
 
   addTarget: (username: string) => void
   seedTarget: (profile: Profile) => void
+  /** Soft-remove from the Others rail; cached profile/posts/reports are kept. */
   removeTarget: (username: string) => void
+  /** Hard-delete one target's cached data (Settings → Data & privacy only). */
+  purgeTarget: (username: string) => void
   /** Hard-clear every target's cached data (for Settings → Data & privacy). */
   clearAllTargets: () => void
   setActiveTarget: (username: string | null) => void
@@ -144,9 +147,19 @@ export const useXIntelStore = create<XIntelState>()(
       addTarget: (username) => {
         const name = canonical(username)
         if (!name) return
-        const existing = get().targets.find((t) => t.toLowerCase() === name.toLowerCase())
-        if (existing) {
-          set({ activeTarget: existing })
+        const lower = name.toLowerCase()
+        const existingInRail = get().targets.find((t) => t.toLowerCase() === lower)
+        if (existingInRail) {
+          set({ activeTarget: existingInRail })
+          return
+        }
+        // Revive a target that was soft-removed from the rail but still cached.
+        const cachedKey = findReportKey(get().reports, name)
+        if (cachedKey) {
+          set((s) => ({
+            targets: [...s.targets, cachedKey],
+            activeTarget: cachedKey,
+          }))
           return
         }
         set((s) => ({
@@ -216,16 +229,31 @@ export const useXIntelStore = create<XIntelState>()(
       },
 
       removeTarget: (username) => {
+        const lower = canonical(username).toLowerCase()
+        set((s) => {
+          const railKey = s.targets.find((t) => t.toLowerCase() === lower)
+          if (!railKey) return s
+          const targets = s.targets.filter((t) => t !== railKey)
+          return {
+            targets,
+            activeTarget: s.activeTarget === railKey ? (targets[0] ?? null) : s.activeTarget,
+          }
+        })
+      },
+
+      purgeTarget: (username) => {
         set((s) => {
           const key = findReportKey(s.reports, username)
           if (!key) return s
           const reports = { ...s.reports }
           delete reports[key]
-          const targets = s.targets.filter((t) => t !== key)
+          const targets = s.targets.filter((t) => t.toLowerCase() !== key.toLowerCase())
           return {
             targets,
             reports,
-            activeTarget: s.activeTarget === key ? (targets[0] ?? null) : s.activeTarget,
+            activeTarget: s.activeTarget?.toLowerCase() === key.toLowerCase()
+              ? (targets[0] ?? null)
+              : s.activeTarget,
           }
         })
       },

@@ -1,5 +1,6 @@
 import type { StateStorage } from 'zustand/middleware'
 import { encryptString, decryptString } from './device-crypto'
+import { toast } from '../stores/toast-store'
 
 // Async zustand `StateStorage` that transparently encrypts persisted values at
 // rest using the device-bound key (see device-crypto.ts). zustand/persist fully
@@ -21,6 +22,22 @@ const ENC_PREFIX = 'enc:v1:'
 // snapshot issued always wins. Each link captures its value, so if several
 // writes queue up they still encrypt/store in the order they were requested.
 const writeChains = new Map<string, Promise<void>>()
+
+// A silent persist failure means data loss on the next reload — exactly the bug
+// where reports vanished across disconnect/reconnect. Surface it loudly, but
+// only once per key per session so a failing store doesn't spam toasts.
+const warnedKeys = new Set<string>()
+function reportPersistFailure(name: string, reason: string, err?: unknown): void {
+  console.warn(`[encrypted-storage] ${reason}; skipped persisting ${name}`, err ?? '')
+  if (warnedKeys.has(name)) return
+  warnedKeys.add(name)
+  try {
+    toast.error(
+      'Saving data failed',
+      `Could not persist "${name}" (${reason}). Changes will be lost when you close or reload this tab.`,
+    )
+  } catch { /* toast store unavailable (e.g. tests) */ }
+}
 
 export function createEncryptedStorage(): StateStorage {
   return {
@@ -45,16 +62,17 @@ export function createEncryptedStorage(): StateStorage {
           let payload: string
           try {
             payload = ENC_PREFIX + (await encryptString(value))
-          } catch {
+          } catch (err) {
             // Encryption unavailable → fail closed: never persist the sensitive
-            // corpus in plaintext. Data stays in memory for the session only.
-            console.warn(`[encrypted-storage] encryption unavailable; skipped persisting ${name}`)
+            // corpus in plaintext. Data stays in memory for the session only —
+            // tell the user instead of losing their reports silently.
+            reportPersistFailure(name, 'encryption unavailable', err)
             return
           }
           try {
             localStorage.setItem(name, payload)
           } catch (err) {
-            console.warn('[encrypted-storage] setItem failed', name, err)
+            reportPersistFailure(name, 'storage write failed (quota?)', err)
           }
         })
       writeChains.set(name, next)
