@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useComposeStore, ME_CONTEXT, type XSearchMode } from '../../stores/compose-store'
+import { useComposeStore, ME_CONTEXT, ALL_CONTEXT, type XSearchMode } from '../../stores/compose-store'
 import { useXIntelStore } from '../../stores/x-intel-store'
+import { useXSelfStore } from '../../stores/x-self-store'
 import { useModels } from '../../hooks/use-models'
 import { pickComposeModel, modelSupportsXSearch } from '../../lib/compose/model'
+import { buildCorpus } from '../../lib/compose/build-corpus'
 import type { TargetContext } from '../../lib/compose/compose-prompt'
 import { ComposeChat } from './compose-chat'
 import { PostComposer } from './post-composer'
@@ -22,6 +24,7 @@ export function ComposeWorkspace() {
 
   const targets = useXIntelStore((s) => s.targets)
   const reports = useXIntelStore((s) => s.reports)
+  const selfAccounts = useXSelfStore((s) => s.accounts)
 
   const [copied, setCopied] = useState(false)
 
@@ -36,7 +39,7 @@ export function ComposeWorkspace() {
   }, [activeContext, ensureSession])
 
   const targetContext: TargetContext | undefined = useMemo(() => {
-    if (activeContext === ME_CONTEXT) return undefined
+    if (activeContext === ME_CONTEXT || activeContext === ALL_CONTEXT) return undefined
     const report = reports[activeContext]
     if (!report?.profile) return { username: activeContext }
     return {
@@ -46,6 +49,17 @@ export function ComposeWorkspace() {
       recentPosts: report.posts.slice(0, 20).map((p) => ({ id: p.id, text: p.text, kind: p.kind })),
     }
   }, [activeContext, reports])
+
+  // The "All" context assembles the entire gathered data set into one dump.
+  const corpus: string | undefined = useMemo(() => {
+    if (activeContext !== ALL_CONTEXT) return undefined
+    return (
+      buildCorpus({
+        selfAccounts: Object.values(selfAccounts),
+        reports: Object.values(reports),
+      }) || undefined
+    )
+  }, [activeContext, selfAccounts, reports])
 
   const xSearchSupported = models ? modelSupportsXSearch(models, model) : false
 
@@ -61,6 +75,7 @@ export function ComposeWorkspace() {
             className="bg-[var(--color-bg-input)] border border-[var(--color-border-faint)] rounded-md px-2 py-1 text-[11px] text-white/70 outline-none"
           >
             <option value={ME_CONTEXT}>Your account</option>
+            <option value={ALL_CONTEXT}>All (entire data set)</option>
             {targets.map((t) => (
               <option key={t} value={t}>@{t}</option>
             ))}
@@ -107,7 +122,7 @@ export function ComposeWorkspace() {
       {/* Split view */}
       <div className="flex flex-1 min-h-0">
         <div className="flex-1 min-w-0 border-r border-white/[0.05]">
-          <ComposeChat context={activeContext} targetContext={targetContext} />
+          <ComposeChat context={activeContext} targetContext={targetContext} corpus={corpus} />
         </div>
         <div className="w-[46%] max-w-[560px] min-w-0 flex flex-col min-h-0">
           <div className="flex-1 min-h-0">

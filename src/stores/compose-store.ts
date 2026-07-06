@@ -10,6 +10,10 @@ import { createSafeStorage } from '../lib/safe-storage'
 // reference to a target keep separate transcripts and drafts.
 
 export const ME_CONTEXT = '__me__'
+// Whole-corpus context: composing/discussing against the entire gathered data
+// set (every connected self account + every target report) rather than one
+// subject. Keyed like any other context, so it gets its own transcript + draft.
+export const ALL_CONTEXT = '__all__'
 
 export interface ComposeSession {
   messages: ChatMessage[]

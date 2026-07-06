@@ -13,6 +13,9 @@ export interface TargetContext {
 
 export interface ComposeContext {
   target?: TargetContext
+  /** Pre-formatted dump of the entire gathered data set (the "All" context).
+   *  Mutually exclusive with `target` in practice. */
+  corpus?: string
   xSearchOn: boolean
 }
 
@@ -48,7 +51,11 @@ export function buildComposeSystem(ctx: ComposeContext): string {
     )
   }
 
-  if (ctx.target) {
+  if (ctx.corpus) {
+    parts.push(
+      `Context — you have access to the user's ENTIRE gathered X data set below. This spans every connected account and every analyzed target. Use it to answer questions about the whole corpus, compare subjects, surface patterns, and ground any draft you write. Cite specific accounts/posts when relevant. If asked something the data doesn't cover, say so plainly rather than inventing.\n\n===== DATA SET =====\n${ctx.corpus}\n===== END DATA SET =====`,
+    )
+  } else if (ctx.target) {
     const t = ctx.target
     const recent = (t.recentPosts ?? [])
       .slice(0, 20)

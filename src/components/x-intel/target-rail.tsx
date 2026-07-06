@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useXIntelStore } from '../../stores/x-intel-store'
 import { useXSelfStore } from '../../stores/x-self-store'
 import { runGather } from '../../lib/x-intel/orchestrate'
-import { openComposeForTarget } from '../../lib/compose/open-compose'
 import { CostMeter } from './cost-meter'
 import { cn } from '../../lib/utils'
 
@@ -112,16 +111,6 @@ export function TargetRail() {
                     {busy === t ? 'gathering…' : relativeTime(report?.profile?.gatheredAt)}
                   </div>
                 </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); openComposeForTarget(t) }}
-                  title="Compose post"
-                  className="opacity-0 group-hover:opacity-100 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-all shrink-0 p-0.5"
-                >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
-                </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleRemove(t) }}
                   title="Remove from rail"

@@ -27,7 +27,7 @@ export function useCompose() {
   } = useComposeStore()
 
   const send = useCallback(
-    async (userMessage: string, targetContext?: TargetContext) => {
+    async (userMessage: string, targetContext?: TargetContext, corpus?: string) => {
       const context = activeContext
       ensureSession(context)
 
@@ -39,7 +39,7 @@ export function useCompose() {
       abortRef.current = abortController
 
       const xSearchOn = xSearch !== 'off'
-      const system = buildComposeSystem({ target: targetContext, xSearchOn })
+      const system = buildComposeSystem({ target: targetContext, corpus, xSearchOn })
 
       // Transcript minus the trailing empty assistant placeholder.
       const session = useComposeStore.getState().sessions[context]

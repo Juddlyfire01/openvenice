@@ -6,9 +6,10 @@ import type { TargetContext } from '../../lib/compose/compose-prompt'
 interface ComposeChatProps {
   context: string
   targetContext?: TargetContext
+  corpus?: string
 }
 
-export function ComposeChat({ context, targetContext }: ComposeChatProps) {
+export function ComposeChat({ context, targetContext, corpus }: ComposeChatProps) {
   const session = useComposeStore((s) => s.sessions[context])
   const { send, stop, isStreaming } = useCompose()
   const [input, setInput] = useState('')
@@ -24,7 +25,7 @@ export function ComposeChat({ context, targetContext }: ComposeChatProps) {
     const text = input.trim()
     if (!text || isStreaming) return
     setInput('')
-    void send(text, targetContext)
+    void send(text, targetContext, corpus)
   }
 
   return (
@@ -32,7 +33,9 @@ export function ComposeChat({ context, targetContext }: ComposeChatProps) {
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 ? (
           <div className="text-[12px] text-white/20 leading-relaxed">
-            Describe the post you want. I can research live X context and we'll shape it together — the draft builds on the right.
+            {corpus
+              ? 'Ask anything about your entire gathered data set — compare accounts, surface patterns, or draft from the whole corpus. The draft builds on the right.'
+              : "Describe the post you want. I can research live X context and we'll shape it together — the draft builds on the right."}
           </div>
         ) : (
           messages.map((m, i) =>
