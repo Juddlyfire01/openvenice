@@ -92,9 +92,10 @@ export function ProfileCard() {
     const activeId = useXSelfStore.getState().activeAccountId
     if (!activeId) return
     // Soft-disconnect: keep cached profile/posts/reports so a reconnect is
-    // instant and the UI never flashes empty states. reset() is a hard wipe.
+    // instant and the UI never flashes empty states. Hard-clear lives in
+    // Settings → Data & privacy.
     await selfLogout(activeId)
-    useXSelfStore.getState().removeAccount(activeId)
+    useXSelfStore.getState().disconnectAccount(activeId)
     await refreshSelfSession()
   }
 

@@ -26,7 +26,7 @@ export function SelfRail() {
   const accountOrder = useXSelfStore((s) => s.accountOrder)
   const activeAccountId = useXSelfStore((s) => s.activeAccountId)
   const connected = useXSelfStore((s) => s.connected)
-  const removeAccount = useXSelfStore((s) => s.removeAccount)
+  const disconnectAccount = useXSelfStore((s) => s.disconnectAccount)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,9 +49,9 @@ export function SelfRail() {
   }
 
   const handleDisconnect = async (id: string, username: string) => {
-    if (!confirm(`Disconnect @${username}? Cached data is kept for a fast reconnect.`)) return
+    if (!confirm(`Disconnect @${username}? Your gathered data stays encrypted on this device and is revived if you reconnect. Clear it anytime from Settings → Data & privacy.`)) return
     await selfLogout(id)
-    removeAccount(id)
+    disconnectAccount(id)
     // If we just removed the active account, the server fell back to another
     // (or none); re-probe to sync the store's activeAccountId + connected flag.
     if (id === activeAccountId) {

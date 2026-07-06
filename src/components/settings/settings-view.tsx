@@ -3,12 +3,14 @@ import { cn } from '../../lib/utils'
 import { useSettingsStore } from '../../stores/settings-store'
 import { ProfileSection } from './profile-section'
 import { DisplaySection } from './display-section'
+import { DataPrivacySection } from './data-privacy-section'
 
-type Category = 'profile' | 'display'
+type Category = 'profile' | 'display' | 'data'
 
 const CATEGORIES: Array<{ id: Category; label: string; desc: string }> = [
   { id: 'profile', label: 'Profile', desc: 'Your display identity' },
   { id: 'display', label: 'Display', desc: 'Theme, scale, and density' },
+  { id: 'data', label: 'Data & privacy', desc: 'Manage & clear cached data' },
 ]
 
 export function SettingsView() {
@@ -61,7 +63,7 @@ export function SettingsView() {
           <h2 className="text-[18px] font-semibold text-[var(--color-text-primary)] mb-6">
             {CATEGORIES.find((c) => c.id === cat)?.label}
           </h2>
-          {cat === 'profile' ? <ProfileSection /> : <DisplaySection />}
+          {cat === 'profile' ? <ProfileSection /> : cat === 'data' ? <DataPrivacySection /> : <DisplaySection />}
         </div>
       </div>
     </div>

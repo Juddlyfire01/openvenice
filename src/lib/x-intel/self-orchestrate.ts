@@ -48,10 +48,11 @@ function reconcileAccounts(session: { connected: boolean; accountId?: string; us
   const store = useXSelfStore.getState()
   store.setConnected(session.connected)
   for (const a of session.accounts) store.upsertAccount(a)
-  // Drop accounts the server no longer knows about.
+  // Drop accounts the server no longer knows about FROM THE RAIL — but keep
+  // their encrypted cache so reconnecting the same X id revives the data.
   const serverIds = new Set(session.accounts.map((a) => a.id))
   for (const id of store.accountOrder) {
-    if (!serverIds.has(id)) store.removeAccount(id)
+    if (!serverIds.has(id)) store.disconnectAccount(id)
   }
   if (session.connected && session.accountId) {
     store.setActiveAccount(session.accountId)

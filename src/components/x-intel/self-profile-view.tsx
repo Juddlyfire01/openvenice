@@ -36,11 +36,9 @@ function ConnectCta() {
       <div className="space-y-1.5 max-w-sm">
         <h2 className="text-[15px] font-semibold text-white/85">Connect your X account</h2>
         <p className="text-[12px] text-white/40 leading-relaxed">
-          Sign in with X (OAuth 2.0) to unlock your verified profile, your posts, and
-          — unlike target analysis — your <b className="text-white/60">bookmarks</b> and{' '}
-          <b className="text-white/60">likes</b>. Your account is analyzed with the same
-          intelligence report engine used for targets. Connect as many accounts as you
-          manage and switch between them from the rail.
+          Sign in with X (OAuth 2.0) to analyze your profile activity. Your account is
+          processed privately with an intelligence report engine. Connect as many
+          accounts as you manage and switch between them from the rail.
         </p>
       </div>
       <button
@@ -50,7 +48,9 @@ function ConnectCta() {
         Connect X
       </button>
       <p className="text-[10px] text-white/25 max-w-xs">
-        Tokens are held server-side in secure, HttpOnly cookies — never exposed to the browser.
+        Your access token stays server-side in a secure, HttpOnly cookie — never exposed to the
+        browser. Gathered data is encrypted at rest on this device and can be cleared anytime from
+        Settings → Data &amp; privacy.
       </p>
     </div>
   )
@@ -104,7 +104,8 @@ function XConnectFlow({
         </div>
       )}
       <p className="text-[10px] text-white/25 max-w-xs">
-        Tokens are held server-side in a secure, HttpOnly cookie — never exposed to the browser.
+        Your access token stays server-side in a secure, HttpOnly cookie. Gathered data is
+        encrypted at rest on this device.
       </p>
     </div>
   )
@@ -131,6 +132,7 @@ export function SelfProfileView() {
   const connected = useXSelfStore((s) => s.connected)
   const connecting = useXSelfStore((s) => s.connecting)
   const activeAccountId = useXSelfStore((s) => s.activeAccountId)
+  const accountCount = useXSelfStore((s) => s.accountOrder.length)
   const account = useXSelfStore((s) => (s.activeAccountId ? s.accounts[s.activeAccountId] : undefined))
   const setSynthesisSettings = useXSelfStore((s) => s.setSynthesisSettings)
 
@@ -181,7 +183,8 @@ export function SelfProfileView() {
   const disconnect = async () => {
     if (!activeAccountId) return
     await selfLogout(activeAccountId)
-    useXSelfStore.getState().removeAccount(activeAccountId)
+    // Soft-disconnect: keep the encrypted cache so reconnecting revives it.
+    useXSelfStore.getState().disconnectAccount(activeAccountId)
     // Re-probe so the store reflects the server's new active account (or none).
     await refreshSelfSession()
   }
@@ -191,11 +194,14 @@ export function SelfProfileView() {
   // Connect CTA so the user sees the connection process has begun.
   if (connecting) return <XConnectFlow phase="authorizing" />
 
-  // No accounts at all → first-time connect CTA. (The rail also shows a connect
-  // button, but the main area carries the explanatory copy.)
-  if (!connected && (useXSelfStore.getState().accountOrder.length === 0)) return <ConnectCta />
+  // No accounts at all → connect CTA. This covers both the first-time case and
+  // the "just deleted my last account" case: zero accounts means there is
+  // nothing to select, so show Connect regardless of the `connected` flag (which
+  // lags behind removal until the next session probe resolves). Reads the
+  // reactive accountCount so this re-evaluates the moment the last one is removed.
+  if (accountCount === 0) return <ConnectCta />
 
-  // Connected (or have remembered accounts) but none is active yet.
+  // Accounts exist but none is active yet (genuine transient pick-one state).
   if (!activeAccountId || !account) return <NoActiveAccount />
 
   // Connected but no profile yet. If we're still waiting on persist hydration,

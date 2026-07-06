@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { createEncryptedStorage } from '../lib/encrypted-storage'
 import type { Profile, Post, Edge, CharacterProfile, SynthesisSettings, IntelReportSnapshot } from '../lib/x-intel/types'
 import { DEFAULT_SYNTHESIS_SETTINGS } from '../lib/x-intel/types'
 import { computeAnalytics, postDateRange } from '../lib/x-intel/analytics'
@@ -97,6 +98,8 @@ interface XIntelState {
   addTarget: (username: string) => void
   seedTarget: (profile: Profile) => void
   removeTarget: (username: string) => void
+  /** Hard-clear every target's cached data (for Settings → Data & privacy). */
+  clearAllTargets: () => void
   setActiveTarget: (username: string | null) => void
   setActiveSubTab: (tab: IntelSubTab) => void
   setActiveSelfSubTab: (tab: IntelSubTab) => void
@@ -227,6 +230,8 @@ export const useXIntelStore = create<XIntelState>()(
         })
       },
 
+      clearAllTargets: () => set({ targets: [], reports: {}, activeTarget: null }),
+
       setActiveTarget: (username) => set({ activeTarget: username }),
       setActiveSubTab: (tab) => set({ activeSubTab: tab }),
       setActiveSelfSubTab: (tab) => set({ activeSelfSubTab: tab }),
@@ -302,6 +307,10 @@ export const useXIntelStore = create<XIntelState>()(
     {
       name: 'x-intel-reports',
       version: 4,
+      // Target profiles/posts/reports are encrypted at rest with the device-bound
+      // key. Legacy plaintext entries are read transparently and re-encrypted on
+      // the next persist. See encrypted-storage.ts.
+      storage: createJSONStorage(() => createEncryptedStorage()),
       migrate: (persisted, version) => {
         const state = persisted as Partial<XIntelState>
         if (version < 1 && state.reports && state.lifetimeTotal == null) {

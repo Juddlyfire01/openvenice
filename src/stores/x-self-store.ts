@@ -9,7 +9,8 @@
 // /api/x/proxy calls hit that account. Mirrors how useXIntelStore already
 // stores per-target reports.
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { createEncryptedStorage } from '../lib/encrypted-storage'
 import type { Profile, Post, Edge, IntelReportSnapshot, SynthesisSettings } from '../lib/x-intel/types'
 import { DEFAULT_SYNTHESIS_SETTINGS } from '../lib/x-intel/types'
 
@@ -52,9 +53,12 @@ function emptyAccount(id: string, username: string, synthesisSettings: Synthesis
 }
 
 interface XSelfState {
-  /** Per-account cache keyed by X user id. */
+  /** Per-account cache keyed by X user id. Holds BOTH currently-connected
+   *  accounts and disconnected-but-cached ones (data survives disconnect,
+   *  encrypted at rest). `accountOrder` decides which are shown in the rail. */
   accounts: Record<string, SelfAccount>
-  /** Display order for the rail (X user ids). */
+  /** Rail display order — only currently-connected accounts (X user ids).
+   *  Disconnecting removes an id here but keeps its bucket in `accounts`. */
   accountOrder: string[]
   /** The currently-selected account; matches the server-side x_active_account. */
   activeAccountId: string | null
@@ -68,7 +72,13 @@ interface XSelfState {
 
   // Account lifecycle
   upsertAccount: (account: { id: string; username: string }) => void
-  removeAccount: (id: string) => void
+  /** Soft disconnect: drop from the rail (accountOrder) but KEEP the cached
+   *  bucket in `accounts` so reconnecting the same X id revives it instantly. */
+  disconnectAccount: (id: string) => void
+  /** Hard delete: purge one account's cached data entirely (rail + bucket). */
+  purgeAccount: (id: string) => void
+  /** Hard delete every account's cached data (connected or not). */
+  purgeAllAccounts: () => void
   setActiveAccount: (id: string | null) => void
   setConnecting: (connecting: boolean) => void
   setConnected: (connected: boolean) => void
@@ -105,9 +115,16 @@ export const useXSelfStore = create<XSelfState>()(
 
       upsertAccount: ({ id, username }) =>
         set((s) => {
+          const inRail = s.accountOrder.includes(id)
           if (s.accounts[id]) {
-            // Refresh username only (profile/posts kept).
-            return { accounts: { ...s.accounts, [id]: { ...s.accounts[id], username } } }
+            // Bucket exists. Refresh username, keeping all cached data. If it was
+            // disconnected (cached but not in the rail), reviving it here restores
+            // the full profile/posts/bookmarks/likes/reports — this is the
+            // "reconnect revives your data" path.
+            return {
+              accounts: { ...s.accounts, [id]: { ...s.accounts[id], username } },
+              accountOrder: inRail ? s.accountOrder : [...s.accountOrder, id],
+            }
           }
           return {
             accounts: { ...s.accounts, [id]: emptyAccount(id, username, s.defaultSynthesisSettings) },
@@ -115,7 +132,15 @@ export const useXSelfStore = create<XSelfState>()(
           }
         }),
 
-      removeAccount: (id) =>
+      disconnectAccount: (id) =>
+        set((s) => {
+          // Keep accounts[id] (encrypted cache); only remove it from the rail.
+          const accountOrder = s.accountOrder.filter((a) => a !== id)
+          const activeAccountId = s.activeAccountId === id ? (accountOrder[0] ?? null) : s.activeAccountId
+          return { accountOrder, activeAccountId }
+        }),
+
+      purgeAccount: (id) =>
         set((s) => {
           const accounts = { ...s.accounts }
           delete accounts[id]
@@ -123,6 +148,15 @@ export const useXSelfStore = create<XSelfState>()(
           const activeAccountId = s.activeAccountId === id ? (accountOrder[0] ?? null) : s.activeAccountId
           return { accounts, accountOrder, activeAccountId }
         }),
+
+      purgeAllAccounts: () =>
+        set((s) => ({
+          accounts: {},
+          accountOrder: [],
+          // Keep any still-live server session flag as-is; only the active
+          // pointer is invalidated since its bucket is gone.
+          activeAccountId: s.accountOrder.length ? null : s.activeAccountId,
+        })),
 
       setActiveAccount: (id) => set({ activeAccountId: id }),
       setConnecting: (connecting) => set({ connecting }),
@@ -234,6 +268,10 @@ export const useXSelfStore = create<XSelfState>()(
     {
       name: 'x-self-profile',
       version: 2,
+      // Sensitive corpus (posts, bookmarks, likes, reports) is encrypted at rest
+      // with a device-bound key. Legacy plaintext entries are read transparently
+      // and re-written encrypted on the next persist. See encrypted-storage.ts.
+      storage: createJSONStorage(() => createEncryptedStorage()),
       migrate: (persisted, version) => {
         const state = (persisted ?? {}) as Partial<XSelfState> & {
           // v1 flat fields
