@@ -58,6 +58,13 @@ async function runOAuthBootstrap(): Promise<OAuthBootstrapResult> {
   const oauthError = params.get('x_error')
   const oauthReturn = params.get('x_connected') === '1' || !!oauthError
 
+  // An OAuth round-trip is "in progress" when we land here straight from the
+  // callback (?x_connected / ?x_error) OR when a click flagged the sessionStorage
+  // bridge and we're still on the same tab. Either way, show the connecting UI
+  // until the session probe resolves.
+  const inProgress = oauthReturn || sessionStorage.getItem('x_oauth_in_progress') === '1'
+  if (inProgress) useXSelfStore.getState().setConnecting(true)
+
   let connected = false
   try {
     connected = await refreshSelfSession()
@@ -69,6 +76,12 @@ async function runOAuthBootstrap(): Promise<OAuthBootstrapResult> {
   } catch {
     connected = false
   }
+
+  // The round-trip is over — clear the bridge and drop the connecting flag so the
+  // real connected/disconnected state can render. The syncing phase (profile
+  // gather) is driven separately by SelfProfileView via its own busy state.
+  try { sessionStorage.removeItem('x_oauth_in_progress') } catch { /* private mode */ }
+  useXSelfStore.getState().setConnecting(false)
 
   if (oauthReturn) {
     window.history.replaceState({}, '', window.location.pathname)

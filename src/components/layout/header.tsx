@@ -53,6 +53,7 @@ export function Header({ onOpenApiKey, onOpenMobileSidebar }: Props) {
   const { activeTab, selectedModels, setSelectedModel } = useSettingsStore()
   const apiKey = useAuthStore((s) => s.apiKey)
   const xConnected = useXSelfStore((s) => s.connected)
+  const xConnecting = useXSelfStore((s) => s.connecting)
   const hasOwnSelector = noModelSelector.has(activeTab)
   const modelType = modelTypeMap[activeTab] || 'text'
   const { data: models } = useModels(hasOwnSelector ? undefined : modelType)
@@ -95,9 +96,11 @@ export function Header({ onOpenApiKey, onOpenMobileSidebar }: Props) {
       {activeTab === 'intel' && (
         <ConnectionPill
           connected={xConnected}
+          connecting={xConnecting}
           connectedLabel="X: Connected"
           disconnectedLabel="Connect X"
-          onClick={() => { if (!xConnected) beginSelfLogin() }}
+          connectingLabel="Connecting…"
+          onClick={() => { if (!xConnected && !xConnecting) beginSelfLogin() }}
         />
       )}
 

@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useXSelfStore } from '../../stores/x-self-store'
 import { generateSelfReport } from '../../lib/x-intel/self-orchestrate'
 import { computeAnalytics } from '../../lib/x-intel/analytics'
 import { AnalyticsPanels, ChangeSummaryPanel, NarrativePanels, ReportTimeline } from './profile-report'
 import { postUrl } from '../../lib/x-intel/evidence'
 import { formatTokens } from '../../lib/utils'
+import { Spinner } from '../ui/spinner'
 import type { Post } from '../../lib/x-intel/types'
 
 function relDate(iso: string): string {
@@ -56,6 +57,18 @@ export function SelfReport() {
   const activeReportId = useXSelfStore((s) => s.activeReportId)
   const setActiveReport = useXSelfStore((s) => s.setActiveReport)
   const deleteReport = useXSelfStore((s) => s.deleteReport)
+
+  // The persist middleware hydrates from localStorage asynchronously. On a
+  // fresh page load (incl. the OAuth redirect return) `reportHistory` starts
+  // empty and re-hydrates a frame or two later — without this guard we'd flash
+  // "No report yet" even when the user has saved reports on disk.
+  const [hydrated, setHydrated] = useState(useXSelfStore.persist.hasHydrated())
+  useEffect(() => {
+    if (hydrated) return
+    const unsub = useXSelfStore.persist.onFinishHydration(() => setHydrated(true))
+    if (useXSelfStore.persist.hasHydrated()) setHydrated(true)
+    return unsub
+  }, [hydrated])
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -115,6 +128,13 @@ export function SelfReport() {
             Live analytics preview (computed, free). Generate a report to add analyst narrative and track changes over time.
           </p>
           <AnalyticsPanels a={liveAnalytics} posts={posts} onAddTarget={noAdd} />
+        </div>
+      ) : !hydrated ? (
+        // Persist layer hasn't hydrated yet — reports may be sitting in
+        // localStorage about to reappear. Don't flash "No report yet."
+        <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
+          <Spinner className="h-4 w-4 text-white/30" />
+          <p className="text-[11px] text-white/25">Loading reports…</p>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-2">

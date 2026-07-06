@@ -89,7 +89,9 @@ export function ProfileCard() {
 
   const disconnect = async () => {
     await selfLogout()
-    useXSelfStore.getState().reset()
+    // Soft-disconnect: keep cached profile/posts/reports so a reconnect is
+    // instant and the UI never flashes empty states. reset() is a hard wipe.
+    useXSelfStore.getState().disconnect()
   }
 
   const profile = report?.profile ? ensureProfileShape(report.profile) : null

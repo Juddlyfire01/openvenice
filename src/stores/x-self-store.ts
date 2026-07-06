@@ -16,6 +16,10 @@ export interface SelfSectionsRefreshed {
 
 interface XSelfState {
   connected: boolean
+  // True while the OAuth round-trip is in flight (click → x.com → return) or
+  // while the post-redirect session probe is still resolving. Not persisted:
+  // re-derived on load from the URL params + sessionStorage bridge.
+  connecting: boolean
   profile: Profile | null
   posts: Post[]
   bookmarks: Post[]
@@ -27,6 +31,7 @@ interface XSelfState {
   synthesisSettings: SynthesisSettings
 
   setConnected: (connected: boolean) => void
+  setConnecting: (connecting: boolean) => void
   setProfile: (profile: Profile | null) => void
   setPosts: (posts: Post[]) => void
   setBookmarks: (bookmarks: Post[]) => void
@@ -37,6 +42,11 @@ interface XSelfState {
   appendReport: (snapshot: IntelReportSnapshot) => void
   setActiveReport: (id: string) => void
   deleteReport: (id: string) => void
+  /** Drop the live connection flags but keep all cached profile/posts/reports so
+   *  a reconnect is instant and the UI doesn't flash "no reports" while the
+   *  persist layer re-hydrates. Use `reset()` only for a hard wipe. */
+  disconnect: () => void
+  /** Hard-clear everything (cached data + flags). Not used by the disconnect UI. */
   reset: () => void
 }
 
@@ -56,9 +66,11 @@ export const useXSelfStore = create<XSelfState>()(
   persist(
     (set) => ({
       connected: false,
+      connecting: false,
       ...EMPTY,
 
       setConnected: (connected) => set({ connected }),
+      setConnecting: (connecting) => set({ connecting }),
       setProfile: (profile) => set({ profile }),
       setPosts: (posts) => set({ posts }),
       setBookmarks: (bookmarks) => set({ bookmarks }),
@@ -81,9 +93,14 @@ export const useXSelfStore = create<XSelfState>()(
           return { reportHistory, activeReportId }
         }),
 
-      // On disconnect, drop the connection flag but keep cached data so a
-      // reconnect is instant; reset() is available for a hard clear.
-      reset: () => set({ connected: false, ...EMPTY }),
+      // Soft-disconnect: drop the live connection flags but keep all cached
+      // profile/posts/bookmarks/likes/reports so a reconnect is instant and the
+      // UI doesn't flash empty states while the persist layer re-hydrates. The
+      // server-side logout call is the caller's responsibility (selfLogout()).
+      disconnect: () => set({ connected: false, connecting: false }),
+
+      // Hard-clear everything (flags + cached data). Not used by the disconnect UI.
+      reset: () => set({ connected: false, connecting: false, ...EMPTY }),
     }),
     {
       name: 'x-self-profile',

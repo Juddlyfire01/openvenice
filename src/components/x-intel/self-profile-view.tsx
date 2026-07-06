@@ -7,6 +7,7 @@ import { formatTokens } from '../../lib/utils'
 import { computeActivity } from '../../lib/x-intel/activity'
 import { ProfileOverview } from './profile-overview'
 import { SelfReport } from './self-report'
+import { Spinner } from '../ui/spinner'
 import type { Profile } from '../../lib/x-intel/types'
 
 /** Bio with clickable URLs / mentions / hashtags (mentions open on X here —
@@ -54,8 +55,63 @@ function ConnectCta() {
   )
 }
 
+/**
+ * Informational loading screen shown during the OAuth round-trip and the
+ * post-redirect profile gather. Replaces the dead-end "Connect button reappears
+ * then profile pops in" sequence with explicit phase copy so the user always
+ * knows what's happening.
+ *
+ * - phase="authorizing": OAuth redirect in flight (click → x.com → return) or
+ *   the session probe is still resolving after the callback.
+ * - phase="syncing": session is connected but the first profile/posts/bookmarks
+ *   gather is running. Can surface a retry button if that gather fails.
+ */
+function XConnectFlow({
+  phase,
+  busy,
+  error,
+  onRetry,
+}: {
+  phase: 'authorizing' | 'syncing'
+  busy?: boolean
+  error?: string | null
+  onRetry?: () => void
+}) {
+  const title = phase === 'authorizing' ? 'Connecting to X…' : 'Syncing your profile…'
+  const subtitle = phase === 'authorizing'
+    ? 'Authorizing your account with X. You’ll be back here in a moment.'
+    : 'Fetching your profile, posts, bookmarks & likes.'
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center gap-4 px-6 animate-fade-in">
+      <Spinner className="h-5 w-5 text-[var(--color-accent)]" />
+      <div className="space-y-1 max-w-sm">
+        <h2 className="text-[15px] font-semibold text-white/85">{title}</h2>
+        <p className="text-[12px] text-white/40 leading-relaxed">{subtitle}</p>
+      </div>
+      {phase === 'syncing' && error && (
+        <div className="space-y-2 max-w-sm">
+          <p className="text-[11px] text-red-400/70">{error}</p>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              disabled={busy}
+              className="px-3 py-1.5 text-[12px] font-medium bg-white text-black rounded-md hover:bg-white/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {busy ? 'Retrying…' : 'Retry gather'}
+            </button>
+          )}
+        </div>
+      )}
+      <p className="text-[10px] text-white/25 max-w-xs">
+        Tokens are held server-side in a secure, HttpOnly cookie — never exposed to the browser.
+      </p>
+    </div>
+  )
+}
+
 export function SelfProfileView() {
   const connected = useXSelfStore((s) => s.connected)
+  const connecting = useXSelfStore((s) => s.connecting)
   const profile = useXSelfStore((s) => s.profile)
   const posts = useXSelfStore((s) => s.posts)
   const bookmarks = useXSelfStore((s) => s.bookmarks)
@@ -63,6 +119,19 @@ export function SelfProfileView() {
   const refreshedAt = useXSelfStore((s) => s.refreshedAt)
   const synthesisSettings = useXSelfStore((s) => s.synthesisSettings)
   const setSynthesisSettings = useXSelfStore((s) => s.setSynthesisSettings)
+
+  // The zustand persist middleware hydrates from localStorage asynchronously.
+  // On a fresh page load (incl. the OAuth redirect return) the store starts with
+  // empty defaults (reportHistory: [], profile: null) and then re-hydrates a
+  // frame or two later. Without tracking this we'd flash "No report yet" and
+  // kick off a redundant gather even when a cached profile exists on disk.
+  const [hydrated, setHydrated] = useState(useXSelfStore.persist.hasHydrated())
+  useEffect(() => {
+    if (hydrated) return
+    const unsub = useXSelfStore.persist.onFinishHydration(() => setHydrated(true))
+    if (useXSelfStore.persist.hasHydrated()) setHydrated(true)
+    return unsub
+  }, [hydrated])
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -74,8 +143,11 @@ export function SelfProfileView() {
     finally { setBusy(false) }
   }
 
-  // After the shared session probe (app bootstrap or Intel mount), sync profile data.
+  // After the shared session probe (app bootstrap or Intel mount), sync profile
+  // data — but only once the persist layer has hydrated, otherwise we'd gather
+  // even when a cached profile is about to reappear from localStorage.
   useEffect(() => {
+    if (!hydrated) return
     let cancelled = false
     void refreshSelfSession().then((isConnected) => {
       if (cancelled || !isConnected || useXSelfStore.getState().profile) return
@@ -86,14 +158,36 @@ export function SelfProfileView() {
         .finally(() => { if (!cancelled) setBusy(false) })
     })
     return () => { cancelled = true }
-  }, [])
+  }, [hydrated])
 
   const disconnect = async () => {
     await selfLogout()
-    useXSelfStore.getState().reset()
+    // Soft-disconnect: keep cached profile/posts/reports so a reconnect is
+    // instant and the UI never flashes empty states. reset() is a hard wipe.
+    useXSelfStore.getState().disconnect()
   }
 
+  // OAuth round-trip in flight (click → x.com → return, or session probe still
+  // resolving after the callback). Show the authorizing screen instead of the
+  // Connect CTA so the user sees the connection process has begun.
+  if (connecting) return <XConnectFlow phase="authorizing" />
+
   if (!connected) return <ConnectCta />
+
+  // Connected but no profile yet. If we're still waiting on persist hydration,
+  // the profile may well be sitting in localStorage about to reappear — show the
+  // syncing screen rather than flashing the empty state. Once hydrated (and
+  // still no profile), this is the genuine first-gather phase right after OAuth.
+  if (connected && !profile) {
+    return (
+      <XConnectFlow
+        phase="syncing"
+        busy={busy || !hydrated}
+        error={hydrated ? error : null}
+        onRetry={runRefresh}
+      />
+    )
+  }
 
   return (
     <div className="flex flex-col lg:flex-row h-full min-h-0">

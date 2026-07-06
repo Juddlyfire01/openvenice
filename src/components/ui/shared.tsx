@@ -203,23 +203,40 @@ export function StatusDot({ tone = 'slate', pulsing }: { tone?: 'emerald' | 'amb
 /**
  * A header status pill (e.g. "Connected" / "Connect API key"). Single source of
  * truth for the connection-indicator styling so every key toggle looks identical.
+ * When `connecting` is true, shows a spinner + connectingLabel and disables the
+ * click so the user sees the connection process has begun.
  */
-export function ConnectionPill({ connected, connectedLabel, disconnectedLabel, onClick }: {
+export function ConnectionPill({ connected, connecting, connectedLabel, disconnectedLabel, connectingLabel, onClick }: {
   connected: boolean
+  connecting?: boolean
   connectedLabel: string
   disconnectedLabel: string
+  connectingLabel?: string
   onClick: () => void
 }) {
   return (
     <button
       onClick={onClick}
-      aria-label={connected ? `${connectedLabel}, manage` : disconnectedLabel}
-      className="flex items-center gap-2 text-[13px] px-2.5 py-1.5 rounded-md border border-[var(--color-border-soft)] hover:border-[var(--color-border-strong)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
+      disabled={connecting}
+      aria-label={connecting ? (connectingLabel ?? 'Connecting…') : connected ? `${connectedLabel}, manage` : disconnectedLabel}
+      aria-busy={connecting || undefined}
+      className="flex items-center gap-2 text-[13px] px-2.5 py-1.5 rounded-md border border-[var(--color-border-soft)] hover:border-[var(--color-border-strong)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 disabled:cursor-default disabled:opacity-80"
     >
-      <StatusDot tone={connected ? 'teal' : 'slate'} pulsing={!connected} />
-      <span className={connected ? 'text-[var(--color-text-primary)] font-medium' : 'text-[var(--color-text-secondary)]'}>
-        {connected ? connectedLabel : disconnectedLabel}
-      </span>
+      {connecting ? (
+        <>
+          <Spinner className="text-[var(--color-text-secondary)]" />
+          <span className="text-[var(--color-text-secondary)] font-medium">
+            {connectingLabel ?? 'Connecting…'}
+          </span>
+        </>
+      ) : (
+        <>
+          <StatusDot tone={connected ? 'teal' : 'slate'} pulsing={!connected} />
+          <span className={connected ? 'text-[var(--color-text-primary)] font-medium' : 'text-[var(--color-text-secondary)]'}>
+            {connected ? connectedLabel : disconnectedLabel}
+          </span>
+        </>
+      )}
     </button>
   )
 }
