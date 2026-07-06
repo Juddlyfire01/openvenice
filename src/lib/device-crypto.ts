@@ -74,8 +74,20 @@ export function getDeviceKey(): Promise<CryptoKey> {
   return keyPromise
 }
 
-const b64encode = (buf: ArrayBuffer): string =>
-  btoa(String.fromCharCode(...new Uint8Array(buf)))
+// Chunked: spreading a large buffer into fromCharCode's arguments overflows the
+// call stack (RangeError) once ciphertext exceeds ~100KB — which a gathered
+// corpus + report history easily does. That made encryptString throw, and the
+// fail-closed storage layer silently skipped persisting, so reports vanished on
+// reload/reconnect. Encode in 32KB slices instead.
+const b64encode = (buf: ArrayBuffer): string => {
+  const bytes = new Uint8Array(buf)
+  const CHUNK = 0x8000
+  let bin = ''
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  }
+  return btoa(bin)
+}
 
 const b64decode = (str: string): Uint8Array<ArrayBuffer> => {
   const bin = atob(str)
