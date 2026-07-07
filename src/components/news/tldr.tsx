@@ -2,35 +2,52 @@ import { useState } from 'react'
 import { venice } from '../../lib/venice-client'
 import type { ChatCompletionResponse } from '../../types/venice'
 import { Spinner } from '../ui/spinner'
+import { prepareScrapedSource } from '../../lib/news/tldr-source'
 
-const TLDR_MODEL = 'qwen3-next-80b'
+const TLDR_MODEL = 'venice-uncensored-1-2'
 const SCRAPE_MAX_CHARS = 6000
 
 interface ScrapeResponse { url: string; content: string; format: string }
 
 const cache = new Map<string, string>()
 
-async function scrapeArticle(url: string): Promise<string | null> {
+async function scrapeArticle(url: string, title: string): Promise<string | null> {
   try {
     const r = await venice<ScrapeResponse>('/augment/scrape', {
       method: 'POST',
       body: JSON.stringify({ url }),
     })
     const content = (r.content ?? '').trim()
-    return content.length > 0 ? content.slice(0, SCRAPE_MAX_CHARS) : null
+    if (content.length === 0) return null
+    // Scraped pages (esp. crypto news sites) often prepend large boilerplate
+    // widgets — price tickers, "recommended articles" teasers — before the
+    // real article body. Strip that noise and anchor to the article's own
+    // title before truncating, so the LLM actually sees the article.
+    const prepared = prepareScrapedSource(content, title, SCRAPE_MAX_CHARS)
+    return prepared.length > 0 ? prepared : null
   } catch {
     return null
   }
 }
 
-async function summarize(source: string): Promise<string> {
+async function summarize(source: string, title: string): Promise<string> {
   const res = await venice<ChatCompletionResponse>('/chat/completions', {
     method: 'POST',
     body: JSON.stringify({
       model: TLDR_MODEL,
       messages: [
-        { role: 'system', content: 'You summarize news articles into 2-3 short bullet points. Output only the bullets, each starting with "- ". No preamble.' },
-        { role: 'user', content: source },
+        {
+          role: 'system',
+          content:
+            'You summarize news articles into 2-3 short bullet points. ' +
+            'The user message contains the article title followed by scraped page content, which may include ' +
+            'unrelated boilerplate (ads, price tickers, navigation, other article teasers). ' +
+            'Summarize ONLY the article matching the given title — ignore any unrelated content. ' +
+            'If the scraped content does not actually contain that article, output exactly: ' +
+            '"- Summary unavailable: scraped content did not match the article." ' +
+            'Output only the bullets, each starting with "- ". No preamble.',
+        },
+        { role: 'user', content: `Article title: ${title}\n\n${source}` },
       ],
       temperature: 0.3,
       max_tokens: 220,
@@ -39,7 +56,7 @@ async function summarize(source: string): Promise<string> {
   return res.choices?.[0]?.message?.content?.trim() ?? ''
 }
 
-export function Tldr({ url, excerpt }: { url: string; excerpt: string }) {
+export function Tldr({ url, title, excerpt }: { url: string; title: string; excerpt: string }) {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>(
     cache.has(url) ? 'done' : 'idle',
   )
@@ -49,12 +66,12 @@ export function Tldr({ url, excerpt }: { url: string; excerpt: string }) {
   async function run() {
     setState('loading')
     try {
-      const scraped = await scrapeArticle(url)
+      const scraped = await scrapeArticle(url, title)
       const usedExcerpt = scraped == null
       setFromExcerpt(usedExcerpt)
       const source = scraped ?? excerpt
       if (!source) { setState('error'); return }
-      const summary = await summarize(source)
+      const summary = await summarize(source, title)
       if (!summary) { setState('error'); return }
       cache.set(url, summary)
       setText(summary)

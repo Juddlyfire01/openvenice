@@ -40,8 +40,11 @@ export const NEWS_CATEGORIES: { id: NewsCategory; label: string }[] = [
 /** Categories enabled by default (AI + Crypto + Tech on; rest off). */
 export const DEFAULT_CATEGORIES: NewsCategory[] = ['ai', 'crypto', 'tech']
 
+/** Feeds excluded from the default set even though their category is on. */
+const DEFAULT_EXCLUDED_FEED_IDS = new Set(['coindesk', 'cointelegraph'])
+
 export const DEFAULT_FEED_IDS: string[] = NEWS_FEEDS
-  .filter((f) => DEFAULT_CATEGORIES.includes(f.category))
+  .filter((f) => DEFAULT_CATEGORIES.includes(f.category) && !DEFAULT_EXCLUDED_FEED_IDS.has(f.id))
   .map((f) => f.id)
 
 const FEED_BY_ID = new Map(NEWS_FEEDS.map((f) => [f.id, f]))

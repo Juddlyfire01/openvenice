@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { stripHtml, truncate, hashId, extractImageUrl, toIso } from './normalize'
+import { stripHtml, truncate, hashId, extractImageUrl, toIso, stripLinkAggregatorMeta } from './normalize'
 
 describe('stripHtml', () => {
   it('removes tags and decodes basic entities', () => {
@@ -41,5 +41,25 @@ describe('toIso', () => {
   })
   it('returns empty string for junk', () => {
     expect(toIso('not a date')).toBe('')
+  })
+})
+
+describe('stripLinkAggregatorMeta', () => {
+  it('strips the hnrss.org-style Article/Comments/Points bookkeeping block', () => {
+    const input =
+      'Article URL: https://bradleywoolf.com/links-1/sequencing-my-own-dna-at-home ' +
+      'Comments URL: https://news.ycombinator.com/item?id=48812156 Points: 161 # Comments: 52'
+    expect(stripLinkAggregatorMeta(input)).toBe('')
+  })
+
+  it('leaves real prose from a Show HN style body intact', () => {
+    const input = 'Comments URL: https://news.ycombinator.com/item?id=48812045 Points: 18 # Comments: 18'
+    const withProse = `I built a thing that does a cool thing. ${input}`
+    expect(stripLinkAggregatorMeta(withProse)).toBe('I built a thing that does a cool thing.')
+  })
+
+  it('is a no-op on content with no aggregator metadata', () => {
+    const plain = 'Just a normal article summary with no metadata lines.'
+    expect(stripLinkAggregatorMeta(plain)).toBe(plain)
   })
 })

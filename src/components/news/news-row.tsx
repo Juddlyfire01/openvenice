@@ -60,7 +60,7 @@ export function NewsRow({ item, expanded, onToggle }: {
             >
               Read full article ↗
             </a>
-            <Tldr url={item.url} excerpt={item.summary} />
+            <Tldr url={item.url} title={item.title} excerpt={item.summary} />
             <button
               type="button"
               onClick={() => toggleBookmark(item)}

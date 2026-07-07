@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser'
 import type { NewsFeed, NewsItem } from './types'
-import { stripHtml, truncate, hashId, extractImageUrl, toIso } from './normalize'
+import { stripHtml, truncate, hashId, extractImageUrl, toIso, stripLinkAggregatorMeta } from './normalize'
 
 const SUMMARY_MAX = 400
 
@@ -52,7 +52,7 @@ function build(feed: NewsFeed, title: string, url: string, descHtml: string, dat
     category: feed.category,
     sourceName: feed.name,
     title: cleanTitle,
-    summary: truncate(stripHtml(descHtml), SUMMARY_MAX),
+    summary: truncate(stripLinkAggregatorMeta(stripHtml(descHtml)), SUMMARY_MAX),
     url: cleanUrl,
     imageUrl: imageFrom(node, descHtml),
     publishedAt: toIso(dateRaw),

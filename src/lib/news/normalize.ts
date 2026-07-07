@@ -38,3 +38,25 @@ export function toIso(raw: string | undefined): string {
   const t = Date.parse(raw)
   return Number.isFinite(t) ? new Date(t).toISOString() : ''
 }
+
+// Link-aggregator feeds (Hacker News via hnrss.org, and similar "submission
+// link" style feeds) don't provide a real article excerpt — their
+// <description> is synthesized bookkeeping metadata instead, e.g.:
+//   "Article URL: https://... Comments URL: https://... Points: 165 # Comments: 57"
+// Left as-is, that metadata gets displayed as if it were the article summary
+// (meaningless to a reader) and can leak into the TL;DR fallback source when
+// scraping fails. Strip it out; if nothing meaningful remains, the caller
+// gets an empty string and the summary UI is simply omitted.
+const LINK_AGGREGATOR_META = [
+  /Article URL:\s*\S+/gi,
+  /Comments? URL:\s*\S+/gi,
+  /Points:\s*\d+/gi,
+  /#\s*Comments:\s*\d+/gi,
+]
+
+export function stripLinkAggregatorMeta(input: string): string {
+  if (!input) return ''
+  let out = input
+  for (const re of LINK_AGGREGATOR_META) out = out.replace(re, ' ')
+  return out.replace(/\s+/g, ' ').trim()
+}
