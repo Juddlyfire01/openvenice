@@ -124,9 +124,25 @@ describe('computeAnalytics', () => {
   it('handles empty post set without throwing', () => {
     const a = computeAnalytics(makeProfile(), [], [])
     expect(a.composition.total).toBe(0)
+    expect(a.scope.ownPosts).toBe(0)
+    expect(a.scope.inboundMentions).toBe(0)
     expect(a.engagement.engagementRate).toBe(0)
     expect(a.engagement.bestPostId).toBeNull()
     expect(a.cadence.avgPerDay).toBe(0)
+  })
+
+  it('excludes inbound mentions from posting metrics', () => {
+    const profile = makeProfile()
+    const own = [makePost({ id: 'a', authorId: '1', kind: 'original' })]
+    const inbound = [
+      makePost({ id: 'm1', authorId: '99', kind: 'reply', createdAt: '2026-07-07T08:00:00Z' }),
+      makePost({ id: 'm2', authorId: '99', kind: 'reply', createdAt: '2026-07-07T09:00:00Z' }),
+    ]
+    const a = computeAnalytics(profile, [...own, ...inbound], [])
+    expect(a.composition.total).toBe(1)
+    expect(a.composition.byKindPct.reply).toBe(0)
+    expect(a.scope.ownPosts).toBe(1)
+    expect(a.scope.inboundMentions).toBe(2)
   })
 })
 
@@ -157,14 +173,30 @@ describe('computeDelta', () => {
     ]
     const prev = computeAnalytics(profile, prevPosts, [])
     const curr = computeAnalytics(profile, currPosts, [])
-    const delta = computeDelta(prev, curr, ['b'], { from: '2026-07-01T12:00:00Z', to: '2026-07-01T12:00:00Z' })
+    const delta = computeDelta(prev, curr, [makePost({ id: 'b' })], [])
 
     expect(delta.volumeAdded).toBe(1)
+    expect(delta.volumeAddedOwn).toBe(1)
+    expect(delta.volumeAddedInbound).toBe(0)
     expect(delta.emergingTopics).toContain('DIEM')
     expect(delta.sustainedTopics).toContain('AI')
     // avgLikes moved 100 -> 200 = +100%
     const avgLikes = delta.metricShifts.find((m) => m.metric === 'avgLikes')
     expect(avgLikes?.deltaPct).toBe(100)
+  })
+
+  it('splits newly gathered own posts vs inbound mentions', () => {
+    const profile = makeProfile()
+    const prev = computeAnalytics(profile, [makePost({ id: 'a' })], [])
+    const curr = computeAnalytics(profile, [
+      makePost({ id: 'a' }),
+      makePost({ id: 'b' }),
+      makePost({ id: 'm', authorId: '99' }),
+    ], [])
+    const delta = computeDelta(prev, curr, [makePost({ id: 'b' })], [makePost({ id: 'm', authorId: '99' })])
+    expect(delta.volumeAdded).toBe(2)
+    expect(delta.volumeAddedOwn).toBe(1)
+    expect(delta.volumeAddedInbound).toBe(1)
   })
 
   it('flags cadence pattern change', () => {
@@ -180,7 +212,7 @@ describe('computeDelta', () => {
     ]
     const prev = computeAnalytics(profile, steadyPosts, [])
     const curr = computeAnalytics(profile, burstPosts, [])
-    const delta = computeDelta(prev, curr, [], null)
+    const delta = computeDelta(prev, curr, [], [])
     expect(prev.cadence.pattern).toBe('steady')
     expect(curr.cadence.pattern).toBe('burst')
     expect(delta.cadenceDrift.some((d) => d.includes('rhythm'))).toBe(true)

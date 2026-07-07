@@ -23,6 +23,13 @@ export function tweetIdToMs(id: string | null | undefined): number | null {
   }
 }
 
+/** Split a gathered post set into the subject's own posts vs inbound mentions. */
+export function partitionPosts(profile: Profile, posts: Post[]): { own: Post[]; inbound: Post[] } {
+  const own = posts.filter((p) => p.authorId === profile.id)
+  const inbound = posts.filter((p) => p.authorId && p.authorId !== profile.id)
+  return { own, inbound }
+}
+
 export interface ActivitySummary {
   /** Best "last active" proxy: mostRecentPostId snowflake, else newest own post. */
   lastActiveMs: number | null
@@ -57,8 +64,7 @@ function postMs(p: Post): number | null {
  */
 export function computeActivity(profile: Profile, posts: Post[]): ActivitySummary {
   const now = Date.now()
-  const own = posts.filter((p) => p.authorId === profile.id)
-  const inbound = posts.filter((p) => p.authorId && p.authorId !== profile.id)
+  const { own, inbound } = partitionPosts(profile, posts)
 
   const ownTimes = own.map(postMs).filter((t): t is number => t != null).sort((a, b) => a - b)
 

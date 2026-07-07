@@ -5,8 +5,9 @@ import { useXIntelStore } from '../../stores/x-intel-store'
 import { useXSelfStore } from '../../stores/x-self-store'
 import { generateReport, runGather } from '../../lib/x-intel/orchestrate'
 import { computeAnalytics } from '../../lib/x-intel/analytics'
+import { partitionPosts } from '../../lib/x-intel/activity'
 import { splitEvidence, postUrl, profileUrl } from '../../lib/x-intel/evidence'
-import type { IntelReportSnapshot, ReportAnalytics, ChangeSummary, Post } from '../../lib/x-intel/types'
+import type { IntelReportSnapshot, ReportAnalytics, ChangeSummary, Post, Profile } from '../../lib/x-intel/types'
 import { formatTokens, cn } from '../../lib/utils'
 
 /** Compact markdown renderer reusing the shared prose styling. Strips any
@@ -321,11 +322,18 @@ export function AnalyticsPanels({ a, posts, onAddTarget }: { a: ReportAnalytics;
 
 export function ChangeSummaryPanel({ change }: { change: ChangeSummary }) {
   const shifts = change.metricShifts.filter((m) => Math.abs(m.deltaPct) >= 1)
+  const ownAdded = change.volumeAddedOwn ?? change.volumeAdded
+  const inboundAdded = change.volumeAddedInbound ?? 0
+  const volumeLabel = inboundAdded > 0 && ownAdded !== change.volumeAdded
+    ? `+${ownAdded} authored · +${inboundAdded} mentions gathered`
+    : inboundAdded > 0 && ownAdded === 0
+      ? `+${inboundAdded} mentions gathered`
+      : `+${change.volumeAdded} authored`
   return (
     <section className="rounded-lg border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/[0.04] p-3 space-y-2">
       <div className="flex items-center gap-2">
         <SectionTitle>What changed since last report</SectionTitle>
-        <span className="text-[10px] font-mono text-[var(--color-accent)]/80">+{change.volumeAdded} posts</span>
+        <span className="text-[10px] font-mono text-[var(--color-accent)]/80">{volumeLabel}</span>
       </div>
       {change.narrative && <Prose>{change.narrative}</Prose>}
       {shifts.length > 0 && (
@@ -494,7 +502,14 @@ export function ReportTimeline({ history, activeId, onSelect, onDelete }: {
     <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
       {history.map((r, i) => {
         const active = r.id === activeId
-        const delta = r.changeSummary?.volumeAdded
+        const delta = r.changeSummary
+        const deltaLabel = delta
+          ? (delta.volumeAddedInbound ?? 0) > 0 && (delta.volumeAddedOwn ?? delta.volumeAdded) === 0
+            ? `+${delta.volumeAddedInbound} mentions`
+            : (delta.volumeAddedInbound ?? 0) > 0
+              ? `+${delta.volumeAddedOwn ?? 0}/${delta.volumeAdded}`
+              : `+${delta.volumeAdded}`
+          : null
         return (
           <div
             key={r.id}
@@ -507,7 +522,7 @@ export function ReportTimeline({ history, activeId, onSelect, onDelete }: {
             <div className="text-[10px] font-medium text-white/70 whitespace-nowrap">{relDate(r.createdAt)}</div>
             <div className="text-[9px] font-mono text-white/30 whitespace-nowrap">
               {r.meta.postCount} posts
-              {i === history.length - 1 ? ' · baseline' : delta != null ? ` · +${delta}` : ''}
+              {i === history.length - 1 ? ' · baseline' : deltaLabel != null ? ` · ${deltaLabel}` : ''}
             </div>
             <button
               onClick={(ev) => { ev.stopPropagation(); onDelete(r.id) }}
@@ -519,6 +534,14 @@ export function ReportTimeline({ history, activeId, onSelect, onDelete }: {
       })}
     </div>
   )
+}
+
+function storedPostsLabel(profile: Profile | null | undefined, posts: Post[]): string {
+  if (!posts.length) return 'no posts yet'
+  if (!profile) return `${posts.length} posts stored`
+  const { own, inbound } = partitionPosts(profile, posts)
+  if (inbound.length === 0) return `${posts.length} posts stored`
+  return `${posts.length} stored (${own.length} authored · ${inbound.length} mentions)`
 }
 
 export function ProfileReport() {
@@ -575,7 +598,7 @@ export function ProfileReport() {
       <div className="flex items-center gap-2">
         <h2 className="text-[13px] font-semibold text-white/80">Intelligence report</h2>
         <span className="text-[10px] text-white/25 font-mono">
-          {hasPosts ? `${posts.length} posts stored` : 'no posts yet'}
+          {storedPostsLabel(profile, posts)}
         </span>
         <div className="flex-1" />
         <button

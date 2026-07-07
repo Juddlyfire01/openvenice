@@ -1,4 +1,5 @@
 import { venice } from '../venice-client'
+import { partitionPosts } from './activity'
 import type {
   Profile,
   Post,
@@ -112,10 +113,11 @@ export async function synthesizeProfile(
 
 // ——— Comprehensive Report (analytics-grounded) ———
 
-const REPORT_SYSTEM = `You are a senior intelligence analyst producing a structured dossier on a social-media target. You are given (1) the target's profile, (2) a COMPUTED ANALYTICS object of exact, pre-calculated facts and figures, and (3) a transcript of recent posts.
+const REPORT_SYSTEM = `You are a senior intelligence analyst producing a structured dossier on a social-media target. You are given (1) the target's profile, (2) a COMPUTED ANALYTICS object of exact, pre-calculated facts and figures, and (3) a transcript of the target's OWN posts (not inbound mentions from others).
 
 CRITICAL RULES:
-- The COMPUTED ANALYTICS are ground truth. Cite them. NEVER recompute, contradict, or invent numbers — if you state a figure, it must come from the analytics object.
+- The COMPUTED ANALYTICS are ground truth. They cover only the target's authored posts — inbound mentions others wrote at/about the target are excluded from posting cadence, composition, and engagement metrics.
+- Cite the analytics. NEVER recompute, contradict, or invent numbers — if you state a figure, it must come from the analytics object.
 - Be specific and evidence-grounded. Reference real posts by their id.
 - No speculation beyond what the data supports. Distinguish observation from inference.
 - For notablePosts, return only the post id and why it matters — do not fabricate post text.
@@ -138,10 +140,13 @@ Respond with ONLY a fenced json block matching exactly this shape:
 }
 \`\`\``
 
-const CHANGE_SYSTEM = `You are a senior intelligence analyst writing the "what changed since the last report" section. You are given the previous report's narrative, and a COMPUTED DELTA object of exact changes (new posts, metric shifts, topic movement, cadence drift, network changes).
+const CHANGE_SYSTEM = `You are a senior intelligence analyst writing the "what changed since the last report" section. You are given the previous report's narrative, and a COMPUTED DELTA object of exact changes.
 
 CRITICAL RULES:
 - The COMPUTED DELTA is ground truth. Cite its figures. Never invent numbers.
+- volumeAddedOwn = new posts the TARGET authored. volumeAddedInbound = new mentions OF the target gathered from others. Only volumeAddedOwn counts as the target "posting more" — never attribute inbound mention volume to the target's posting behavior.
+- When volumeAddedInbound dominates volumeAddedOwn, say the target received more inbound attention/mentions, not that they posted more.
+- Posting velocity / avgPerDay shifts reflect authored posts only.
 - Interpret what the shifts mean for the target's strategy/posture. Be concise and concrete.
 - The narrative may use light Markdown but must NOT begin with a label like "markdown:" — write the actual content directly.
 
@@ -213,7 +218,9 @@ export async function synthesizeReport(
   prevSnapshot: IntelReportSnapshot | null,
   settings: SynthesisSettings,
 ): Promise<SynthesizeReportResult> {
-  const transcript = buildTranscript(posts, settings.contextCap)
+  const { own } = partitionPosts(profile, posts)
+  const transcript = buildTranscript(own, settings.contextCap)
+  const inboundCount = posts.length - own.length
 
   const resp = await venice<ChatCompletionResponse>('/chat/completions', {
     method: 'POST',
@@ -225,7 +232,7 @@ export async function synthesizeReport(
         { role: 'system', content: REPORT_SYSTEM },
         {
           role: 'user',
-          content: `Profile: ${JSON.stringify(profile)}\n\nCOMPUTED ANALYTICS (ground truth):\n${JSON.stringify(analytics)}\n\nPosts:\n${transcript}`,
+          content: `Profile: ${JSON.stringify(profile)}\n\nCOMPUTED ANALYTICS (ground truth — own posts only; ${inboundCount} inbound mentions excluded from metrics):\n${JSON.stringify(analytics)}\n\nTarget's own posts:\n${transcript}`,
         },
       ],
     }),

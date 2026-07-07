@@ -11,6 +11,7 @@ import type {
   CadencePattern,
   CadenceVariance,
 } from './types'
+import { partitionPosts } from './activity'
 
 const POST_KINDS: PostKind[] = ['original', 'reply', 'quote', 'retweet']
 const DAY_MS = 86_400_000
@@ -70,10 +71,15 @@ function followLabel(ratio: number, following: number): FollowRatioLabel {
  * Deterministically compute every fact/figure the report needs from data already
  * in the store. Pure: same inputs always yield the same output. The LLM later
  * receives this object as ground truth and is told not to recompute it.
+ *
+ * Posting, engagement, cadence, and topic metrics use only the target's own posts.
+ * Inbound mentions (others tweeting at/about the target) are counted in `scope`
+ * but never mixed into posting velocity or composition.
  */
 export function computeAnalytics(profile: Profile, posts: Post[], edges: Edge[]): ReportAnalytics {
-  const total = posts.length
-  const withTimes = posts
+  const { own, inbound } = partitionPosts(profile, posts)
+  const total = own.length
+  const withTimes = own
     .map((p) => ({ p, t: Date.parse(p.createdAt) }))
     .filter((x) => Number.isFinite(x.t))
     .sort((a, b) => a.t - b.t) // ascending by time
@@ -92,7 +98,7 @@ export function computeAnalytics(profile: Profile, posts: Post[], edges: Edge[])
   let withMedia = 0
   let withLink = 0
   const langCounts = new Map<string, number>()
-  for (const p of posts) {
+  for (const p of own) {
     byKind[p.kind] += 1
     if (p.mediaKeys.length > 0) withMedia += 1
     if (p.urls.length > 0) withLink += 1
@@ -101,7 +107,7 @@ export function computeAnalytics(profile: Profile, posts: Post[], edges: Edge[])
   for (const k of POST_KINDS) byKindPct[k] = total > 0 ? round((byKind[k] / total) * 100, 1) : 0
 
   // ——— Engagement ———
-  const collect = (sel: (p: Post) => number) => posts.map(sel)
+  const collect = (sel: (p: Post) => number) => own.map(sel)
   const impressions = statsFor(collect((p) => p.metrics.impressions))
   const likes = statsFor(collect((p) => p.metrics.likes))
   const reposts = statsFor(collect((p) => p.metrics.reposts))
@@ -112,7 +118,7 @@ export function computeAnalytics(profile: Profile, posts: Post[], edges: Edge[])
 
   const performanceByKind: Record<PostKind, number> = { original: 0, reply: 0, quote: 0, retweet: 0 }
   for (const k of POST_KINDS) {
-    const inKind = posts.filter((p) => p.kind === k)
+    const inKind = own.filter((p) => p.kind === k)
     performanceByKind[k] = inKind.length > 0
       ? round(inKind.reduce((a, p) => a + p.metrics.likes, 0) / inKind.length)
       : 0
@@ -121,7 +127,7 @@ export function computeAnalytics(profile: Profile, posts: Post[], edges: Edge[])
   let worstPostId: string | null = null
   let bestLikes = -1
   let worstLikes = Infinity
-  for (const p of posts) {
+  for (const p of own) {
     if (p.metrics.likes > bestLikes) { bestLikes = p.metrics.likes; bestPostId = p.id }
     if (p.metrics.impressions > 0 && p.metrics.likes < worstLikes) { worstLikes = p.metrics.likes; worstPostId = p.id }
   }
@@ -152,7 +158,7 @@ export function computeAnalytics(profile: Profile, posts: Post[], edges: Edge[])
   // ——— Topics (X's own annotations) ———
   const domainCounts = new Map<string, number>()
   const entityCounts = new Map<string, number>()
-  for (const p of posts) {
+  for (const p of own) {
     for (const c of p.contextAnnotations) {
       if (c.domain) domainCounts.set(c.domain, (domainCounts.get(c.domain) ?? 0) + 1)
       if (c.entity) entityCounts.set(c.entity, (entityCounts.get(c.entity) ?? 0) + 1)
@@ -161,7 +167,7 @@ export function computeAnalytics(profile: Profile, posts: Post[], edges: Edge[])
 
   // ——— Info diet (linked domains) ———
   const dietCounts = new Map<string, number>()
-  for (const p of posts) {
+  for (const p of own) {
     for (const u of p.urls) {
       const host = hostname(u.expanded)
       if (host && !host.endsWith('t.co')) dietCounts.set(host, (dietCounts.get(host) ?? 0) + 1)
@@ -171,7 +177,7 @@ export function computeAnalytics(profile: Profile, posts: Post[], edges: Edge[])
   // ——— Network (from posts + derived edges) ———
   const mentionCounts = new Map<string, number>()
   const replyCounts = new Map<string, number>()
-  for (const p of posts) {
+  for (const p of own) {
     for (const m of p.mentions) mentionCounts.set(m.username, (mentionCounts.get(m.username) ?? 0) + 1)
     if (p.kind === 'reply') {
       for (const m of p.mentions) replyCounts.set(m.username, (replyCounts.get(m.username) ?? 0) + 1)
@@ -241,6 +247,10 @@ export function computeAnalytics(profile: Profile, posts: Post[], edges: Edge[])
       topQuoted: rank(quoteCounts),
       topReplied: rank(replyCounts),
     },
+    scope: {
+      ownPosts: own.length,
+      inboundMentions: inbound.length,
+    },
     computedAt: new Date().toISOString(),
   }
 }
@@ -268,15 +278,19 @@ function labelSet(items: RankedCount[]): Set<string> {
  * Deterministically diff two frozen analytics objects. Produces the computed
  * portion of a ChangeSummary; the LLM narrative is filled in separately. Pure.
  *
- * @param newPostIds ids present in the current set but not the previous one
- * @param dateRangeAdded ISO range covered by the newly-added posts (nullable)
+ * @param addedOwn newly gathered posts authored by the target
+ * @param addedInbound newly gathered inbound mentions of the target
  */
 export function computeDelta(
   prev: ReportAnalytics,
   curr: ReportAnalytics,
-  newPostIds: string[],
-  dateRangeAdded: { from: string; to: string } | null,
+  addedOwn: Post[],
+  addedInbound: Post[],
 ): Omit<ChangeSummary, 'narrative'> {
+  const newPostIds = [...addedOwn, ...addedInbound].map((p) => p.id)
+  const dateRangeAddedOwn = postDateRange(addedOwn)
+  const dateRangeAddedInbound = postDateRange(addedInbound)
+  const dateRangeAdded = postDateRange([...addedOwn, ...addedInbound])
   const metricShifts = [
     { metric: 'engagementRate', from: prev.engagement.engagementRate, to: curr.engagement.engagementRate },
     { metric: 'bookmarkRate', from: prev.engagement.bookmarkRate, to: curr.engagement.bookmarkRate },
@@ -322,7 +336,11 @@ export function computeDelta(
 
   return {
     volumeAdded: newPostIds.length,
+    volumeAddedOwn: addedOwn.length,
+    volumeAddedInbound: addedInbound.length,
     dateRangeAdded,
+    dateRangeAddedOwn,
+    dateRangeAddedInbound,
     metricShifts,
     compositionDrift,
     cadenceDrift,

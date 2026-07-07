@@ -1,6 +1,7 @@
 import { gatherProfile, gatherPosts, gatherMentions } from './gather'
 import { deriveEdges } from './normalize'
 import { computeAnalytics, computeDelta, postDateRange } from './analytics'
+import { partitionPosts } from './activity'
 import { synthesizeReport } from './synthesize'
 import { mergePosts, useXIntelStore, newReportId, findReportKey, type RefreshedAt, type IntelReport } from '../../stores/x-intel-store'
 import type { IntelReportSnapshot, Post } from './types'
@@ -162,9 +163,9 @@ export async function generateReport(username: string): Promise<IntelReportSnaps
   let computedDelta: Omit<import('./types').ChangeSummary, 'narrative'> | null = null
   if (prevSnapshot) {
     const prevIds = new Set(prevSnapshot.meta.postIdsAnalyzed)
-    const newPostIds = report.posts.map((p) => p.id).filter((id) => !prevIds.has(id))
     const newPosts = report.posts.filter((p) => !prevIds.has(p.id))
-    computedDelta = computeDelta(prevSnapshot.analytics, analytics, newPostIds, postDateRange(newPosts))
+    const { own: newOwn, inbound: newInbound } = partitionPosts(report.profile, newPosts)
+    computedDelta = computeDelta(prevSnapshot.analytics, analytics, newOwn, newInbound)
   }
 
   const { narrative, changeNarrative, tokenCost } = await synthesizeReport(

@@ -10,7 +10,8 @@
 import { gatherSelfProfile, gatherSelfPosts, gatherSelfBookmarks, gatherSelfLikes } from './self-gather'
 import { getSelfSession, selfLogout, switchActiveAccount } from './self-client'
 import { deriveEdges } from './normalize'
-import { computeAnalytics, computeDelta, postDateRange } from './analytics'
+import { computeAnalytics, computeDelta } from './analytics'
+import { partitionPosts } from './activity'
 import { synthesizeReport } from './synthesize'
 import { mergePosts, newReportId, useXIntelStore } from '../../stores/x-intel-store'
 import { useXSelfStore } from '../../stores/x-self-store'
@@ -256,9 +257,9 @@ export async function generateSelfReport(): Promise<IntelReportSnapshot> {
   let computedDelta: Omit<ChangeSummary, 'narrative'> | null = null
   if (prevSnapshot) {
     const prevIds = new Set(prevSnapshot.meta.postIdsAnalyzed)
-    const newPostIds = account.posts.map((p) => p.id).filter((id) => !prevIds.has(id))
     const newPosts = account.posts.filter((p) => !prevIds.has(p.id))
-    computedDelta = computeDelta(prevSnapshot.analytics, analytics, newPostIds, postDateRange(newPosts))
+    const { own: newOwn, inbound: newInbound } = partitionPosts(account.profile, newPosts)
+    computedDelta = computeDelta(prevSnapshot.analytics, analytics, newOwn, newInbound)
   }
 
   const { narrative, changeNarrative, tokenCost } = await synthesizeReport(

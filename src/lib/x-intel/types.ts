@@ -142,6 +142,11 @@ export interface ReportAnalytics {
     topQuoted: RankedCount[]          // by referenced post id (placeholder-aware)
     topReplied: RankedCount[]
   }
+  /** How many posts in the store were own vs inbound at compute time. */
+  scope: {
+    ownPosts: number
+    inboundMentions: number
+  }
   computedAt: string  // ISO
 }
 
@@ -161,8 +166,15 @@ export interface ReportNarrative {
 
 /** Computed + interpreted change since the previous report. Null for baseline. */
 export interface ChangeSummary {
+  /** Total newly gathered rows (own + inbound). */
   volumeAdded: number
+  /** New posts authored by the target since the previous report. */
+  volumeAddedOwn: number
+  /** New inbound mentions of the target gathered since the previous report. */
+  volumeAddedInbound: number
   dateRangeAdded: { from: string; to: string } | null
+  dateRangeAddedOwn: { from: string; to: string } | null
+  dateRangeAddedInbound: { from: string; to: string } | null
   metricShifts: { metric: string; from: number; to: number; deltaPct: number }[]
   compositionDrift: string[]      // human-readable computed drift lines
   cadenceDrift: string[]
