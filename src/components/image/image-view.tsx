@@ -7,6 +7,7 @@ import { useAuthStore } from '../../stores/auth-store'
 import { Select } from '../ui/select'
 import { Label, TextArea, PrimaryButton, PillGroup, ErrorText, ExamplePrompts } from '../ui/shared'
 import { GenerationView } from '../ui/generation-view'
+import { LoadingState } from '../ui/spinner'
 import { cn } from '../../lib/utils'
 import { VeniceAPIError } from '../../lib/venice-client'
 import { toast } from '../../stores/toast-store'
@@ -244,10 +245,7 @@ export function ImageView() {
       {images.length === 0 ? (
         <div className="flex items-center justify-center h-full">
           {mutation.isPending ? (
-            <div className="flex flex-col items-center gap-3" role="status" aria-live="polite">
-              <div className="w-8 h-8 border-2 border-white/[0.08] border-t-[var(--color-accent)] rounded-full animate-spin" />
-              <span className="text-[13px] text-white/55">Generating…</span>
-            </div>
+            <LoadingState label="Generating…" size="lg" />
           ) : (
             <ExamplePrompts items={IMAGE_EXAMPLES} onPick={setPrompt} />
           )}

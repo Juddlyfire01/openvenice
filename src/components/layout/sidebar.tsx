@@ -35,6 +35,9 @@ function PlaygroundIcon() {
 function IntelIcon() {
   return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><circle cx="11" cy="11" r="2.5" /></svg>)
 }
+function SignalIcon() {
+  return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="2 12 6 12 9 5 15 19 18 12 22 12" /></svg>)
+}
 function StatsIcon() {
   return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>)
 }
@@ -58,6 +61,7 @@ const navGroups: NavGroup[] = [
     label: 'Dashboard',
     items: [
       { id: 'intel', label: 'Intel', Icon: IntelIcon },
+      { id: 'signal', label: 'Signal', Icon: SignalIcon },
       { id: 'stats', label: 'Stats', Icon: StatsIcon },
     ],
   },

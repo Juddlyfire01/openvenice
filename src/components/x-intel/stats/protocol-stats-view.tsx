@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useVeniceCharts, useVeniceMetrics } from '../../../hooks/use-venicestats'
 import type { VeniceChartPeriod, VeniceMetrics } from '../../../lib/venicestats/types'
-import { fmtPct, fmtRatio, fmtToken, fmtUnitUsd, fmtUsd, relUpdated } from '../../../lib/venicestats/format'
-import { Spinner } from '../../ui/spinner'
-import { ChartCard, KpiCard, LineChart, normalizeChartSeries, PeriodPicker, StatsSection } from './stats-ui'
+import { fmtPct, fmtRatio, fmtToken, fmtUnitUsd, fmtUsd, fmtChartAxis, relUpdated } from '../../../lib/venicestats/format'
+import { LoadingState } from '../../ui/spinner'
+import { ChartCard, KpiCard, LineChart, monthlyBurnChartSeries, normalizeChartSeries, PeriodPicker, StatsSection } from './stats-ui'
 
 const VENICESTATS_HOME = 'https://venicestats.com'
 
@@ -15,7 +15,7 @@ function VvvSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPeriod
   const charts = useVeniceCharts(period)
   return (
     <StatsSection title="VVV Token" href={VENICESTATS_HOME}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <KpiCard
           label="VVV Price"
           value={fmtUnitUsd(m.vvvPrice)}
@@ -31,9 +31,9 @@ function VvvSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPeriod
       </div>
       <ChartCard title="VVV Price (USD)" tip="Historical VVV spot price over the selected time range.">
         {charts.isLoading ? (
-          <div className="h-[140px] flex items-center justify-center"><Spinner /></div>
+          <LoadingState className="h-[140px]" />
         ) : (
-          <LineChart data={charts.data?.vvvPrice ?? []} />
+          <LineChart data={charts.data?.vvvPrice ?? []} formatY={(n, range) => fmtChartAxis(n, { prefix: '$', range })} />
         )}
       </ChartCard>
     </StatsSection>
@@ -45,7 +45,7 @@ function DiemSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPerio
   const discountPct = m.marketDiscount * 100
   return (
     <StatsSection title="DIEM" href={`${VENICESTATS_HOME}/diem`}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <KpiCard
           label="DIEM Price"
           value={fmtUnitUsd(m.diemPrice)}
@@ -59,7 +59,7 @@ function DiemSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPerio
           tip="Total DIEM in circulation, how much is staked, and the current sVVV required to mint one DIEM."
         />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <KpiCard label="Mint cost" value={fmtUnitUsd(m.mintCostUsd)} sub="at current rate" tip="USD cost to mint one DIEM by locking sVVV at today's mint rate." />
         <KpiCard label="Market discount" value={`${discountPct.toFixed(1)}%`} sub="vs mint cost" tip="How much cheaper (or pricier) DIEM trades versus minting it from sVVV." />
         <KpiCard label="Break-even" value={`${m.diemBreakEvenDays}d`} sub="at current prices" tip="Estimated days of compute use before a newly minted DIEM pays back its mint cost." />
@@ -67,9 +67,9 @@ function DiemSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPerio
       </div>
       <ChartCard title="DIEM Price (USD)" tip="Historical DIEM secondary-market price over the selected time range.">
         {charts.isLoading ? (
-          <div className="h-[140px] flex items-center justify-center"><Spinner /></div>
+          <LoadingState className="h-[140px]" />
         ) : (
-          <LineChart data={charts.data?.diemPrice ?? []} color="#60a5fa" />
+          <LineChart data={charts.data?.diemPrice ?? []} color="#60a5fa" formatY={(n, range) => fmtChartAxis(n, { prefix: '$', range })} />
         )}
       </ChartCard>
     </StatsSection>
@@ -80,7 +80,7 @@ function StakingSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPe
   const charts = useVeniceCharts(period)
   return (
     <StatsSection title="Staking & Locking" href={`${VENICESTATS_HOME}/staking`}>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <KpiCard
           label="Total Staked"
           value={fmtToken(m.totalStaked, 'sVVV')}
@@ -106,25 +106,25 @@ function StakingSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPe
           tip="New VVV emitted to stakers per year and the current staking APR."
         />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <KpiCard label="Net flow (7d)" value={fmtToken(m.netFlow7d, 'VVV', 2)} delta={deltaFromPct(m.stakingGrowth7d)} tip="Net VVV moved into or out of staking over the last seven days." />
         <KpiCard label="Growth 30d" value={fmtPct(m.stakingGrowth30d)} tip="Percentage change in total staked sVVV over the last thirty days." />
         <KpiCard label="New stakers (7d)" value={String(m.newStakers7dCount)} sub={`${m.activeWallets7dCount} active wallets`} tip="Wallets that newly staked this week and wallets with recent staking activity." />
         <KpiCard label="Cooldown wave" value={fmtToken(m.cooldownVvv, 'VVV')} sub={`${m.cooldownWallets} wallets`} tip="VVV currently in the unstaking cooldown queue across all wallets." />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
         <ChartCard title="Staking Ratio" tip="Share of circulating VVV held as sVVV over time.">
           {charts.isLoading ? (
-            <div className="h-[140px] flex items-center justify-center"><Spinner /></div>
+            <LoadingState className="h-[140px]" />
           ) : (
-            <LineChart data={charts.data?.stakingRatio ?? []} color="#34d399" />
+            <LineChart data={charts.data?.stakingRatio ?? []} color="#34d399" formatY={(n, range) => fmtChartAxis(n, { pct: true, range })} />
           )}
         </ChartCard>
         <ChartCard title="Total Staked (sVVV)" tip="Total sVVV supply staked on-chain over time.">
           {charts.isLoading ? (
-            <div className="h-[140px] flex items-center justify-center"><Spinner /></div>
+            <LoadingState className="h-[140px]" />
           ) : (
-            <LineChart data={charts.data?.totalStaked ?? []} color="#34d399" />
+            <LineChart data={charts.data?.totalStaked ?? []} color="#34d399" formatY={(n, range) => fmtChartAxis(n, { range })} />
           )}
         </ChartCard>
       </div>
@@ -134,11 +134,12 @@ function StakingSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPe
 
 function BurnsSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPeriod }) {
   const charts = useVeniceCharts(period)
+  const monthlyCharts = useVeniceCharts('all')
   const prog = m.programmaticBurns
   const latestMonthly = m.monthlyBurns[0]
   return (
     <StatsSection title="Burns" href={`${VENICESTATS_HOME}/burns`}>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <KpiCard
           label="Organic burns"
           value={fmtUsd(m.organicBurned * m.vvvPrice)}
@@ -164,19 +165,19 @@ function BurnsSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPeri
           tip="Most recent completed monthly buy-and-burn cycle in USD and VVV burned."
         />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
         <ChartCard title="Pro Sub Burns (daily)" tip="Daily USD spent on Pro subscription VVV buybacks.">
           {charts.isLoading ? (
-            <div className="h-[140px] flex items-center justify-center"><Spinner /></div>
+            <LoadingState className="h-[140px]" />
           ) : (
-            <LineChart data={normalizeChartSeries(charts.data?.burns, 'programmaticUsd')} color="#f97316" />
+            <LineChart data={normalizeChartSeries(charts.data?.burns, 'programmaticUsd')} color="#f97316" formatY={(n, range) => fmtChartAxis(n, { prefix: '$', range })} />
           )}
         </ChartCard>
-        <ChartCard title="Monthly Buy-and-Burn (USD)" tip="Monthly discretionary buy-and-burn spend in USD over time.">
-          {charts.isLoading ? (
-            <div className="h-[140px] flex items-center justify-center"><Spinner /></div>
+        <ChartCard title="Monthly Buy-and-Burn (USD)" tip="Completed monthly discretionary buy-and-burn spend in USD. Current month omitted until the burn executes.">
+          {monthlyCharts.isLoading ? (
+            <LoadingState className="h-[140px]" />
           ) : (
-            <LineChart data={normalizeChartSeries(charts.data?.burnsMonthly, 'organicUsd')} color="#ef4444" />
+            <LineChart data={monthlyBurnChartSeries(monthlyCharts.data?.burnsMonthly, period)} color="#ef4444" formatY={(n, range) => fmtChartAxis(n, { prefix: '$', range })} />
           )}
         </ChartCard>
       </div>
@@ -191,7 +192,7 @@ export function ProtocolStatsView() {
   if (metrics.isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center min-h-0">
-        <Spinner />
+        <LoadingState size="md" />
       </div>
     )
   }

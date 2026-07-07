@@ -8,6 +8,7 @@ import { callAgent, DEFAULT_AGENT_MODEL } from '../../lib/playground-agent'
 import { runAgentTools, type RunStep } from '../../lib/playground-agent-tools'
 import { applyPatch, type WorkflowPatch } from '../../lib/workflow-mutations'
 import { generateId } from '../../lib/utils'
+import { Spinner } from '../ui/spinner'
 import { cn } from '../../lib/utils'
 
 const STARTER_PROMPTS = [
@@ -213,7 +214,7 @@ export function PlaygroundChat() {
                 >
                   {m.pending && (!m.activity || m.activity.length === 0) ? (
                     <span className="text-white/45 inline-flex items-center gap-1.5">
-                      <span className="inline-block w-3 h-3 border-2 border-white/20 border-t-[var(--color-accent)] rounded-full animate-spin" />
+                      <Spinner size="xs" />
                       Thinking…
                     </span>
                   ) : m.error ? (
@@ -233,7 +234,7 @@ export function PlaygroundChat() {
                     ))}
                     {m.pending && (
                       <div className="flex items-center gap-1.5 text-white/35">
-                        <span className="inline-block w-2 h-2 border border-white/20 border-t-[var(--color-accent)] rounded-full animate-spin" />
+                        <Spinner size="xs" />
                         <span>Working…</span>
                       </div>
                     )}

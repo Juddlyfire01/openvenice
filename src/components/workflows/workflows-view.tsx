@@ -21,6 +21,7 @@ import { executeWorkflow } from '../../lib/workflow-engine'
 import { generateId } from '../../lib/utils'
 import { cn } from '../../lib/utils'
 import { toast } from '../../stores/toast-store'
+import { Spinner } from '../ui/spinner'
 
 const nodeTypes = { venice: WorkflowNode }
 
@@ -306,7 +307,7 @@ function WorkflowCanvas() {
           >
             {isRunning ? (
               <>
-                <span className="w-3 h-3 border-2 border-white/30 border-t-transparent rounded-full animate-spin" />
+                <Spinner size="xs" className="text-white/30" />
                 Running...
               </>
             ) : (

@@ -84,7 +84,7 @@ function XConnectFlow({
     : 'Fetching your profile, posts, bookmarks & likes.'
   return (
     <div className="flex flex-col items-center justify-center h-full text-center gap-4 px-6 animate-fade-in">
-      <Spinner className="h-5 w-5 text-[var(--color-accent)]" />
+      <Spinner size="md" />
       <div className="space-y-1 max-w-sm">
         <h2 className="text-[15px] font-semibold text-white/85">{title}</h2>
         <p className="text-[12px] text-white/40 leading-relaxed">{subtitle}</p>

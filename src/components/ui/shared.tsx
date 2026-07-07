@@ -60,7 +60,7 @@ export function PrimaryButton({ onClick, disabled, loading, children, ariaLabel,
       )}
     >
       {loading ? (
-        <span className="flex items-center justify-center gap-2"><Spinner className="text-white/45" /> Working…</span>
+        <span className="flex items-center justify-center gap-2"><Spinner size="sm" className="text-white/45" /> Working…</span>
       ) : children}
     </button>
   )
@@ -224,7 +224,7 @@ export function ConnectionPill({ connected, connecting, connectedLabel, disconne
     >
       {connecting ? (
         <>
-          <Spinner className="text-[var(--color-text-secondary)]" />
+          <Spinner size="sm" className="text-[var(--color-text-secondary)]" />
           <span className="text-[var(--color-text-secondary)] font-medium">
             {connectingLabel ?? 'Connecting…'}
           </span>

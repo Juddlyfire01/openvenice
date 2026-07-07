@@ -1,4 +1,5 @@
 import type { VeniceChartPeriod, VeniceCharts, VeniceMetrics } from './types'
+import type { BuzzItemType, BuzzMetrics, BuzzResponse, SocialMetrics } from './signal-types'
 
 // Same path in dev and prod — Vite proxies to venicestats.com directly, or to
 // `vercel dev` when VITE_API_TARGET is set (see vite.config.ts).
@@ -44,4 +45,20 @@ export function fetchVeniceMetrics(): Promise<VeniceMetrics> {
 
 export function fetchVeniceCharts(period: VeniceChartPeriod): Promise<VeniceCharts> {
   return venicestatsGet<VeniceCharts>('/api/charts', { period })
+}
+
+export function fetchBuzz(params?: { type?: BuzzItemType; limit?: number; offset?: number }): Promise<BuzzResponse> {
+  const query: Record<string, string> = {}
+  if (params?.type) query.type = params.type
+  if (params?.limit != null) query.limit = String(params.limit)
+  if (params?.offset != null) query.offset = String(params.offset)
+  return venicestatsGet<BuzzResponse>('/api/buzz', query)
+}
+
+export function fetchBuzzMetrics(weeks: number): Promise<BuzzMetrics> {
+  return venicestatsGet<BuzzMetrics>('/api/buzz/metrics', { weeks: String(weeks) })
+}
+
+export function fetchSocial(): Promise<SocialMetrics> {
+  return venicestatsGet<SocialMetrics>('/api/social')
 }

@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/auth-store'
 import { useMusic } from '../../hooks/use-music'
 import { Label, TextArea, PrimaryButton, ErrorText, PillGroup } from '../ui/shared'
 import { GenerationView } from '../ui/generation-view'
+import { Spinner } from '../ui/spinner'
 import { getMusicCapabilities } from '../../lib/music-capabilities'
 import { cn } from '../../lib/utils'
 import { toast } from '../../stores/toast-store'
@@ -220,7 +221,7 @@ export function MusicView() {
           <div className="flex items-center justify-center flex-1 text-white/30 text-[15px]">
             {isProcessing ? (
               <div className="flex flex-col items-center gap-3" role="status" aria-live="polite">
-                <div className="w-7 h-7 border border-white/[0.08] border-t-white/40 rounded-full animate-spin" />
+                <Spinner size="lg" />
                 <span className="text-white/55 text-center">
                   {status === 'queued' ? 'Queued — waiting for a slot' : 'Composing your track'}
                   {elapsedMs > 0 && (

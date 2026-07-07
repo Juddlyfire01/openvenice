@@ -5,7 +5,7 @@ import { computeAnalytics } from '../../lib/x-intel/analytics'
 import { AnalyticsPanels, ChangeSummaryPanel, NarrativePanels, ReportTimeline } from './profile-report'
 import { postUrl } from '../../lib/x-intel/evidence'
 import { formatTokens } from '../../lib/utils'
-import { Spinner } from '../ui/spinner'
+import { LoadingState } from '../ui/spinner'
 import type { Post } from '../../lib/x-intel/types'
 
 function relDate(iso: string): string {
@@ -137,10 +137,12 @@ export function SelfReport({ syncing = false }: { syncing?: boolean }) {
         // reappear from localStorage) or a sync is in flight (posts are still
         // being fetched, so live analytics can't be computed yet). In both cases
         // show a spinner rather than flashing "No report yet."
-        <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
-          <Spinner className="h-4 w-4 text-white/30" />
-          <p className="text-[11px] text-white/25">{syncing ? 'Syncing your data…' : 'Loading reports…'}</p>
-        </div>
+        <LoadingState
+          className="py-16"
+          label={syncing ? 'Syncing your data…' : 'Loading reports…'}
+          size="sm"
+          labelClassName="text-[11px] text-white/25"
+        />
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
           <p className="text-[12px] text-white/40 font-medium">No report yet</p>

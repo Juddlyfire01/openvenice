@@ -17,24 +17,31 @@ import { SettingsView } from './components/settings/settings-view'
 import { useApplyAppearance } from './hooks/use-apply-appearance'
 import { useXOAuthBootstrap } from './hooks/use-x-oauth-bootstrap'
 
+import { ViewLoadingFallback } from './components/ui/spinner'
+
 const LazyWorkflowsView = lazy(() => import('./components/workflows/workflows-view').then((m) => ({ default: m.WorkflowsView })))
 function WorkflowsView() {
-  return <Suspense fallback={<div className="flex items-center justify-center h-full text-[12px] text-white/30">Loading workflows…</div>}><LazyWorkflowsView /></Suspense>
+  return <Suspense fallback={<ViewLoadingFallback label="Loading workflows…" />}><LazyWorkflowsView /></Suspense>
 }
 
 const LazyPlaygroundView = lazy(() => import('./components/playground/playground-view').then((m) => ({ default: m.PlaygroundView })))
 function PlaygroundView() {
-  return <Suspense fallback={<div className="flex items-center justify-center h-full text-[12px] text-white/30">Loading playground…</div>}><LazyPlaygroundView /></Suspense>
+  return <Suspense fallback={<ViewLoadingFallback label="Loading playground…" />}><LazyPlaygroundView /></Suspense>
 }
 
 const LazyIntelView = lazy(() => import('./components/x-intel/intel-view').then((m) => ({ default: m.IntelView })))
 function IntelView() {
-  return <Suspense fallback={<div className="flex items-center justify-center h-full text-[12px] text-white/15">Loading intel...</div>}><LazyIntelView /></Suspense>
+  return <Suspense fallback={<ViewLoadingFallback label="Loading intel…" />}><LazyIntelView /></Suspense>
 }
 
 const LazyStatsView = lazy(() => import('./components/stats/stats-view').then((m) => ({ default: m.StatsView })))
 function StatsView() {
-  return <Suspense fallback={<div className="flex items-center justify-center h-full text-[12px] text-white/15">Loading stats...</div>}><LazyStatsView /></Suspense>
+  return <Suspense fallback={<ViewLoadingFallback label="Loading stats…" />}><LazyStatsView /></Suspense>
+}
+
+const LazySignalView = lazy(() => import('./components/signal/signal-view').then((m) => ({ default: m.SignalView })))
+function SignalView() {
+  return <Suspense fallback={<ViewLoadingFallback label="Loading signal…" />}><LazySignalView /></Suspense>
 }
 
 const views = {
@@ -47,6 +54,7 @@ const views = {
   workflows: WorkflowsView,
   playground: PlaygroundView,
   intel: IntelView,
+  signal: SignalView,
   stats: StatsView,
   settings: SettingsView,
 } as const

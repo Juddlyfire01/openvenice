@@ -5,6 +5,7 @@ import { useVideo } from '../../hooks/use-video'
 import { Select } from '../ui/select'
 import { Label, TextArea, PrimaryButton, PillGroup, ErrorText } from '../ui/shared'
 import { GenerationView } from '../ui/generation-view'
+import { Spinner } from '../ui/spinner'
 import { SegmentedControl } from '../ui/sub-tabs'
 import { cn } from '../../lib/utils'
 import { toast } from '../../stores/toast-store'
@@ -299,7 +300,7 @@ export function VideoView() {
           <div className="flex items-center justify-center flex-1 text-white/30 text-[15px]">
             {isProcessing ? (
               <div className="flex flex-col items-center gap-3" role="status" aria-live="polite">
-                <div className="w-7 h-7 border border-white/[0.08] border-t-white/40 rounded-full animate-spin" />
+                <Spinner size="lg" />
                 <span className="text-white/55 text-center">
                   {status === 'queued' ? 'Queued — waiting for a slot' : 'Generating your video'}
                   {elapsedMs > 0 && (

@@ -10,6 +10,7 @@ import { AgentModelPicker } from './agent-model-picker'
 import { cn } from '../../lib/utils'
 import { toast } from '../../stores/toast-store'
 import { DEFAULT_AGENT_MODEL } from '../../lib/playground-agent'
+import { Spinner } from '../ui/spinner'
 
 export function PlaygroundView() {
   const draft = usePlaygroundStore((s) => s.draft)
@@ -192,7 +193,7 @@ export function PlaygroundView() {
             >
               {isRunning ? (
                 <>
-                  <span className="w-2.5 h-2.5 border-2 border-green-300/60 border-t-transparent rounded-full animate-spin" />
+                  <Spinner size="xs" className="text-green-300/60" />
                   <span className="hidden sm:inline">Running…</span>
                 </>
               ) : (

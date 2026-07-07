@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { Spinner } from '../ui/spinner'
+import { LoadingState } from '../ui/spinner'
 import {
   getCachedEmojiCatalog,
   loadEmojiCatalog,
@@ -159,10 +159,12 @@ export function EmojiPicker({ open, anchorRef, onClose, onPick }: EmojiPickerPro
           )}
 
           {catalogLoading ? (
-            <div className="flex flex-col items-center justify-center gap-2 min-h-[12rem] text-white/30">
-              <Spinner className="h-5 w-5 text-white/40" />
-              <p className="text-[11px]">Loading emojis…</p>
-            </div>
+            <LoadingState
+              className="min-h-[12rem]"
+              label="Loading emojis…"
+              size="md"
+              labelClassName="text-[11px] text-white/30"
+            />
           ) : (
             <>
               {!query.trim() && visibleEntries.length === 0 && (

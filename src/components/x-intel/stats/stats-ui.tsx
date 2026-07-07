@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react'
 import { cn } from '../../../lib/utils'
-import type { VeniceDataPoint } from '../../../lib/venicestats/types'
+import type { VeniceChartPeriod, VeniceDataPoint } from '../../../lib/venicestats/types'
+
+// Interactive chart (hover crosshair + tooltip) shared with the Signal tab.
+export { InteractiveChart as LineChart } from '../../ui/interactive-chart'
 
 export function StatsSection({
   title,
@@ -61,7 +64,7 @@ export function KpiCard({
     <div
       title={tip}
       className={cn(
-        'rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-bg-raised)] px-3.5 py-3 min-h-[5.5rem] flex flex-col justify-between',
+        'rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-bg-raised)] px-3.5 py-2.5 min-h-[5rem] flex flex-col justify-between',
         cardHoverCls,
         className,
       )}
@@ -128,91 +131,43 @@ export function normalizeChartSeries(
     .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.v))
 }
 
-/** Lightweight SVG line chart — no chart library dependency. */
-export function LineChart({
-  data,
-  color = 'var(--color-accent)',
-  height = 140,
-  className,
-}: {
-  data: VeniceDataPoint[]
-  color?: string
-  height?: number
-  className?: string
-}) {
-  const series = data.filter((d) => Number.isFinite(d.t) && Number.isFinite(d.v))
-  if (!series.length) {
-    return (
-      <div className={cn('flex items-center justify-center text-[11px] text-[var(--color-text-secondary)]', className)} style={{ height }}>
-        No chart data
-      </div>
-    )
-  }
-
-  const w = 400
-  const h = height
-  const pad = { t: 8, r: 8, b: 20, l: 8 }
-  const innerW = w - pad.l - pad.r
-  const innerH = h - pad.t - pad.b
-  const values = series.map((d) => d.v)
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = max - min || 1
-
-  const points = series.map((d, i) => {
-    const x = pad.l + (i / Math.max(1, series.length - 1)) * innerW
-    const y = pad.t + innerH - ((d.v - min) / range) * innerH
-    return `${x},${y}`
-  })
-
-  const start = new Date(series[0].t)
-  const end = new Date(series[series.length - 1].t)
-  const fmt = (d: Date) => d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-
-  return (
-    <div className={cn('w-full', className)}>
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" preserveAspectRatio="none" role="img" aria-label={titleFromData(series)}>
-        {[0.25, 0.5, 0.75].map((f) => (
-          <line
-            key={f}
-            x1={pad.l}
-            x2={w - pad.r}
-            y1={pad.t + innerH * f}
-            y2={pad.t + innerH * f}
-            stroke="var(--color-border-faint)"
-            strokeWidth="1"
-          />
-        ))}
-        <polyline
-          fill="none"
-          stroke={color}
-          strokeWidth="1.75"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          points={points.join(' ')}
-        />
-        <polyline
-          fill={color}
-          fillOpacity="0.08"
-          stroke="none"
-          points={`${pad.l},${pad.t + innerH} ${points.join(' ')} ${pad.l + innerW},${pad.t + innerH}`}
-        />
-      </svg>
-      <div className="flex justify-between text-[9px] font-mono text-[var(--color-text-secondary)] mt-1 px-0.5">
-        <span>{fmt(start)}</span>
-        <span>{fmt(end)}</span>
-      </div>
-    </div>
-  )
+/**
+ * Monthly buy-and-burn chart buckets include a live partial month (timestamp = now)
+ * with organicUsd = 0 until the discretionary burn executes. Drop that trailing point
+ * so the line doesn't cliff to zero mid-month.
+ */
+export function normalizeMonthlyBurnSeries(
+  raw: Array<{ t: number; v?: number; organicUsd?: number; [key: string]: unknown }> | undefined,
+): VeniceDataPoint[] {
+  const series = normalizeChartSeries(raw, 'organicUsd')
+  if (!series.length) return series
+  const last = series[series.length - 1]!
+  const lastDate = new Date(last.t)
+  const now = new Date()
+  const isCurrentMonth =
+    lastDate.getUTCFullYear() === now.getUTCFullYear() &&
+    lastDate.getUTCMonth() === now.getUTCMonth()
+  if (isCurrentMonth && last.v === 0) return series.slice(0, -1)
+  return series
 }
 
-function titleFromData(data: VeniceDataPoint[]): string {
-  if (data.length < 2) return 'Chart'
-  const first = data[0]?.v
-  const last = data[data.length - 1]?.v
-  if (!Number.isFinite(first) || !Number.isFinite(last)) return 'Chart'
-  const ch = first !== 0 ? ((last - first) / first) * 100 : 0
-  return `Trend from ${first.toLocaleString()} to ${last.toLocaleString()} (${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%)`
+/** Monthly burns are bucketed by calendar month — short chart periods only return 1–2 buckets. */
+const MONTHLY_BURN_WINDOW: Record<VeniceChartPeriod, number | null> = {
+  '7d': 6,
+  '30d': 6,
+  '90d': 4,
+  '1y': 12,
+  all: null,
+}
+
+export function monthlyBurnChartSeries(
+  raw: Array<{ t: number; v?: number; organicUsd?: number; [key: string]: unknown }> | undefined,
+  period: VeniceChartPeriod,
+): VeniceDataPoint[] {
+  let series = normalizeMonthlyBurnSeries(raw)
+  const take = MONTHLY_BURN_WINDOW[period]
+  if (take != null) series = series.slice(-take)
+  return series
 }
 
 const PERIOD_OPTIONS = [
