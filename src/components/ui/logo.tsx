@@ -2,7 +2,7 @@ import { cn } from '../../lib/utils'
 import { useSettingsStore } from '../../stores/settings-store'
 import { faviconHrefForTheme } from '../../lib/appearance'
 
-export function OvxLogo({ className, size = 24 }: { className?: string; size?: number }) {
+export function AppLogo({ className, size = 24 }: { className?: string; size?: number }) {
   const theme = useSettingsStore((s) => s.theme)
 
   return (
@@ -16,10 +16,10 @@ export function OvxLogo({ className, size = 24 }: { className?: string; size?: n
   )
 }
 
-export function OvxWordmark({ className }: { className?: string }) {
+export function AppWordmark({ className }: { className?: string }) {
   return (
     <span className={cn('font-semibold tracking-[-0.02em] text-[var(--color-text-primary)]', className)}>
-      OVX
+      AiSpaceX
     </span>
   )
 }

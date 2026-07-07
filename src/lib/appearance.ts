@@ -25,15 +25,10 @@ export interface AppearanceSnapshot {
   reduceMotion?: boolean
 }
 
-export const FAVICON_VERSION = '5'
+export const FAVICON_VERSION = '10'
 
-export function faviconHrefForTheme(theme: string): string {
-  const base = theme === 'light'
-    ? '/favicon-light.svg'
-    : theme === 'venice'
-      ? '/favicon-venice.svg'
-      : '/favicon-dark.svg'
-  return `${base}?v=${FAVICON_VERSION}`
+export function faviconHrefForTheme(_theme: string): string {
+  return `/logo-dark.svg?v=${FAVICON_VERSION}`
 }
 
 export function applyFaviconForTheme(theme: string, doc: Document = document) {
@@ -42,9 +37,9 @@ export function applyFaviconForTheme(theme: string, doc: Document = document) {
   if (!link) {
     link = doc.createElement('link')
     link.rel = 'icon'
-    link.type = 'image/svg+xml'
     doc.head.appendChild(link)
   }
+  link.type = 'image/svg+xml'
   // Assigning .href forces the browser to re-fetch (path-only setAttribute can stick in cache).
   link.href = href
 }

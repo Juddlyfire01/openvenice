@@ -14,8 +14,6 @@ export const config = { api: { bodyParser: false } }
 
 const VENICE_API_BASE = 'https://api.venice.ai/api/v1'
 
-// Headers we must not copy from the client (auth is injected) or from the
-// upstream (hop-by-hop / length that the platform re-computes when streaming).
 const STRIP_REQUEST = new Set(['host', 'authorization', 'cookie', 'content-length', 'connection'])
 const STRIP_RESPONSE = new Set(['content-encoding', 'content-length', 'transfer-encoding', 'connection'])
 
@@ -68,7 +66,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!upstream.body) return res.end()
 
-  // Stream chunks through so SSE (chat) and binary (image/audio/video) work.
   const reader = upstream.body.getReader()
   try {
     for (;;) {

@@ -8,6 +8,8 @@ import { computeActivity } from '../../lib/x-intel/activity'
 import { ProfileOverview } from './profile-overview'
 import { SelfReport } from './self-report'
 import { Spinner } from '../ui/spinner'
+import { SignInWithXButton } from './sign-in-with-x-button'
+import { XDataPrivacyDisclosure } from './x-data-privacy-disclosure'
 import type { Profile } from '../../lib/x-intel/types'
 
 /** Bio with clickable URLs / mentions / hashtags (mentions open on X here —
@@ -32,26 +34,17 @@ function SelfBio({ text, bioUrls }: { text: string; bioUrls?: { url: string; exp
 
 function ConnectCta() {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center gap-4 px-6">
+    <div className="flex flex-col items-center justify-center h-full text-center gap-5 px-6 animate-fade-in">
+      <img src="/x-logo.svg" alt="" className="h-7 w-auto opacity-90" aria-hidden />
       <div className="space-y-1.5 max-w-sm">
-        <h2 className="text-[15px] font-semibold text-white/85">Connect your X account</h2>
-        <p className="text-[12px] text-white/40 leading-relaxed">
-          Sign in with X (OAuth 2.0) to analyze your profile activity. Your account is
-          processed privately with an intelligence report engine. Connect as many
-          accounts as you manage and switch between them from the rail.
+        <h2 className="text-[16px] font-semibold text-white/90">Analyze your X profile</h2>
+        <p className="text-[12px] text-white/45 leading-relaxed">
+          Posts, network, and AI reports — private to this device.
         </p>
       </div>
-      <button
-        onClick={beginSelfLogin}
-        className="px-4 py-2 text-[12px] font-medium bg-white text-black rounded-md hover:bg-white/90 transition-colors"
-      >
-        Connect X
-      </button>
-      <p className="text-[10px] text-white/25 max-w-xs">
-        Your access token stays server-side in a secure, HttpOnly cookie — never exposed to the
-        browser. Gathered data is encrypted at rest on this device and can be cleared anytime from
-        Settings → Data &amp; privacy.
-      </p>
+      <SignInWithXButton onClick={beginSelfLogin} />
+      <p className="text-[10px] text-white/30">Private · disconnect anytime</p>
+      <XDataPrivacyDisclosure />
     </div>
   )
 }
@@ -103,10 +96,6 @@ function XConnectFlow({
           )}
         </div>
       )}
-      <p className="text-[10px] text-white/25 max-w-xs">
-        Your access token stays server-side in a secure, HttpOnly cookie. Gathered data is
-        encrypted at rest on this device.
-      </p>
     </div>
   )
 }

@@ -55,6 +55,12 @@ describe('settings-store', () => {
     expect(useSettingsStore.getState().reduceMotion).toBe(true)
   })
 
+  it('openSettings can focus a settings category', () => {
+    useSettingsStore.getState().openSettings('data')
+    expect(useSettingsStore.getState().activeTab).toBe('settings')
+    expect(useSettingsStore.getState().settingsFocus).toBe('data')
+  })
+
   it('defaults to intel, not deprecated chat', () => {
     expect(useSettingsStore.getState().activeTab).toBe('intel')
     expect(useSettingsStore.getState().lastNonSettingsTab).toBe('intel')

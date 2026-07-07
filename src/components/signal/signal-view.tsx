@@ -1,5 +1,4 @@
 import { useBuzzMetrics, useSocial } from '../../hooks/use-venicestats'
-import { relUpdated } from '../../lib/venicestats/format'
 import { LoadingState } from '../ui/spinner'
 import { StatsSection } from '../x-intel/stats/stats-ui'
 import { PulseStrip, MoodBadge, computePulse } from './pulse-strip'
@@ -45,24 +44,11 @@ export function SignalView() {
 
   const m = metrics.data
   const pulse = computePulse(m)
-  const updated = relUpdated(social.data?.lastUpdated)
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 space-y-8 w-full">
-        <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-[20px] font-semibold text-[var(--color-text-primary)]">Signal</h1>
-              <MoodBadge mood={pulse.mood} />
-            </div>
-            <p className="text-[12px] text-[var(--color-text-secondary)] mt-0.5">
-              Venice community &amp; attention across X · Updated {updated}
-            </p>
-          </div>
-        </header>
-
-        <StatsSection title="Pulse" href={VENICESTATS_BUZZ}>
+        <StatsSection title="Pulse" titleExtra={<MoodBadge mood={pulse.mood} />} href={VENICESTATS_BUZZ}>
           <PulseStrip m={m} social={social.data} />
         </StatsSection>
 

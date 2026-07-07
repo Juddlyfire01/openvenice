@@ -3,9 +3,7 @@
 // browser calls this with NO token; we attach the user-context access token
 // (refreshing if needed) server-side, so the token never touches client JS.
 //
-// A vercel.json rewrite maps /api/x/proxy/<path> → /api/x/proxy?path=<path>,
-// so this is a single flat function (more reliably detected than a nested
-// [...catch-all] under a pinned framework preset).
+// A vercel.json rewrite maps /api/x/proxy/<path> → /api/x/proxy?path=<path>.
 //
 // Example: GET /api/x/proxy/users/me?user.fields=public_metrics,description
 //          → GET https://api.x.com/2/users/me?user.fields=...
@@ -30,12 +28,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (!session) return res.status(401).json({ error: 'x_not_connected' })
 
-  // Downstream X path arrives via the rewrite's `path` query param.
   const segments = req.query.path
   const path = (Array.isArray(segments) ? segments.join('/') : String(segments ?? '')).replace(/^\/+/, '')
   if (!path) return res.status(400).json({ error: 'missing_path' })
 
-  // Forward the original query string (minus the internal `path` param).
   const url = new URL(`${X_API_BASE}/${path}`)
   for (const [k, v] of Object.entries(req.query)) {
     if (k === 'path') continue
@@ -47,7 +43,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     headers: { Authorization: `Bearer ${session.accessToken}` },
   })
 
-  // Persist any refreshed-token cookies alongside the response.
   if (session.setCookies.length) res.setHeader('Set-Cookie', session.setCookies)
 
   const bodyText = await xRes.text()

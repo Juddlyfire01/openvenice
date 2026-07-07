@@ -38,15 +38,6 @@ export function NewsView() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 space-y-6 w-full">
-        <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-          <div>
-            <h1 className="text-[20px] font-semibold text-[var(--color-text-primary)]">News</h1>
-            <p className="text-[12px] text-[var(--color-text-secondary)] mt-0.5">
-              Breaking headlines across your sources{updated ? ` · Updated ${updated}` : ''}
-            </p>
-          </div>
-        </header>
-
         {enabledFeedIds.length === 0 ? (
           <div className="flex flex-1 items-center justify-center min-h-[40vh] px-6 text-center">
             <p className="text-[13px] text-[var(--color-text-secondary)] max-w-sm">
@@ -76,7 +67,16 @@ export function NewsView() {
         ) : (
           <>
             {activeCategory !== 'bookmarks' && (
-              <StatsSection title="Latest">
+              <StatsSection
+                title="Latest"
+                titleExtra={
+                  updated ? (
+                    <span className="text-[11px] text-[var(--color-text-secondary)] shrink-0">
+                      · Updated {updated}
+                    </span>
+                  ) : null
+                }
+              >
                 <LatestStrip items={items} />
               </StatsSection>
             )}

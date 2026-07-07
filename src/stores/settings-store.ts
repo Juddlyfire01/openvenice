@@ -4,6 +4,7 @@ import { createSafeStorage } from '../lib/safe-storage'
 import { DEFAULT_THEME } from '../lib/theme-palettes'
 
 export type Tab = 'chat' | 'image' | 'audio' | 'music' | 'video' | 'embeddings' | 'workflows' | 'playground' | 'intel' | 'signal' | 'stats' | 'news' | 'settings'
+export type SettingsCategory = 'profile' | 'display' | 'data'
 export type Theme = 'dark' | 'venice' | 'grey' | 'light'
 export type Scale = 90 | 100 | 110 | 125
 export type FontScale = 'sm' | 'md' | 'lg'
@@ -34,7 +35,9 @@ interface SettingsState {
   setProfileName: (name: string) => void
 
   lastNonSettingsTab: Tab
-  openSettings: () => void
+  /** One-shot category focus when opening Settings (e.g. from Intel connect disclosure). */
+  settingsFocus: SettingsCategory | null
+  openSettings: (focus?: SettingsCategory) => void
   closeSettings: () => void
 }
 
@@ -72,10 +75,12 @@ export const useSettingsStore = create<SettingsState>()(
       setProfileName: (name) => set({ profileName: name }),
 
       lastNonSettingsTab: NON_SETTINGS_DEFAULT,
-      openSettings: () =>
+      settingsFocus: null,
+      openSettings: (focus) =>
         set((s) => ({
           lastNonSettingsTab: s.activeTab === 'settings' ? s.lastNonSettingsTab : s.activeTab,
           activeTab: 'settings',
+          settingsFocus: focus ?? null,
         })),
       closeSettings: () =>
         set((s) => ({ activeTab: s.lastNonSettingsTab ?? NON_SETTINGS_DEFAULT })),

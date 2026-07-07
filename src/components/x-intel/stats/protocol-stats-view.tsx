@@ -11,10 +11,30 @@ function deltaFromPct(n: number) {
   return { text: fmtPct(n), positive: n > 0 ? true : n < 0 ? false : undefined }
 }
 
-function VvvSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPeriod }) {
+function VvvSection({
+  m,
+  period,
+  updated,
+  onPeriodChange,
+}: {
+  m: VeniceMetrics
+  period: VeniceChartPeriod
+  updated?: string
+  onPeriodChange: (period: VeniceChartPeriod) => void
+}) {
   const charts = useVeniceCharts(period)
   return (
-    <StatsSection title="VVV Token" href={VENICESTATS_HOME}>
+    <StatsSection
+      title="VVV Token"
+      titleExtra={
+        updated ? (
+          <span className="text-[11px] text-[var(--color-text-secondary)] shrink-0">
+            · Updated {updated}
+          </span>
+        ) : null
+      }
+      href={VENICESTATS_HOME}
+    >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <KpiCard
           label="VVV Price"
@@ -36,6 +56,9 @@ function VvvSection({ m, period }: { m: VeniceMetrics; period: VeniceChartPeriod
           <LineChart data={charts.data?.vvvPrice ?? []} formatY={(n, range) => fmtChartAxis(n, { prefix: '$', range })} />
         )}
       </ChartCard>
+      <div className="flex justify-end">
+        <PeriodPicker value={period} onChange={onPeriodChange} />
+      </div>
     </StatsSection>
   )
 }
@@ -223,17 +246,7 @@ export function ProtocolStatsView() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 space-y-8">
-        <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-          <div>
-            <h1 className="text-[20px] font-semibold text-[var(--color-text-primary)]">Venice Protocol</h1>
-            <p className="text-[12px] text-[var(--color-text-secondary)] mt-0.5">
-              Real-time on-chain data for VVV &amp; DIEM on Base · Updated {updated}
-            </p>
-          </div>
-          <PeriodPicker value={period} onChange={setPeriod} />
-        </header>
-
-        <VvvSection m={m} period={period} />
+        <VvvSection m={m} period={period} updated={updated} onPeriodChange={setPeriod} />
         <DiemSection m={m} period={period} />
         <StakingSection m={m} period={period} />
         <BurnsSection m={m} period={period} />

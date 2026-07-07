@@ -26,7 +26,9 @@ const tabLabels: Record<string, string> = {
   workflows: 'Workflows',
   playground: 'Playground',
   intel: 'Intel',
+  signal: 'Signal',
   stats: 'Stats',
+  news: 'News',
   settings: 'Settings',
 }
 
@@ -40,11 +42,13 @@ const tabSubtitles: Record<string, string> = {
   workflows: 'Chain models visually',
   playground: 'Build workflows by chatting',
   intel: 'X intelligence gathering',
-  stats: 'Venice protocol analytics',
+  signal: 'Venice community & attention across X',
+  stats: 'Real-time on-chain data for VVV & DIEM on Base',
+  news: 'Breaking headlines across your sources',
   settings: 'Preferences and appearance',
 }
 
-const noModelSelector = new Set(['video', 'workflows', 'playground', 'intel', 'stats', 'settings'])
+const noModelSelector = new Set(['video', 'workflows', 'playground', 'intel', 'signal', 'stats', 'news', 'settings'])
 
 interface Props {
   onOpenApiKey: () => void

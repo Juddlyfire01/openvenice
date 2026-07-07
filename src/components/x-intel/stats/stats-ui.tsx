@@ -7,17 +7,22 @@ export { InteractiveChart as LineChart } from '../../ui/interactive-chart'
 
 export function StatsSection({
   title,
+  titleExtra,
   href,
   children,
 }: {
   title: string
+  titleExtra?: ReactNode
   href?: string
   children: ReactNode
 }) {
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-[13px] font-semibold text-[var(--color-text-primary)] truncate min-w-0">{title}</h2>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <h2 className="text-[13px] font-semibold text-[var(--color-text-primary)] truncate">{title}</h2>
+          {titleExtra}
+        </div>
         {href && (
           <a
             href={href}

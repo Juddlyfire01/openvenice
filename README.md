@@ -1,17 +1,17 @@
-# OVX
+# AiSpaceX
 
 A customizable, open-source frontend for the [Venice AI](https://venice.ai) API.
 
-Venice gives you access to powerful AI models for text, images, audio, music, and video. OVX gives you a clean interface to use them — one you own, can modify, and can host yourself.
+Venice gives you access to powerful AI models for text, images, audio, music, and video. AiSpaceX gives you a clean interface to use them — one you own, can modify, and can host yourself.
 
 https://github.com/user-attachments/assets/1056682b-80c2-45da-9b57-6572840e8db4
 
-## Why OVX?
+## Why AiSpaceX?
 
 **Your interface, your rules.** Venice's official UI is great, but sometimes you want more control:
 
 - **Customize everything** — add tools, change layouts, tweak parameters, build features that matter to you. The codebase is intentionally simple and hackable.
-- **Share your API key with family** — host OVX on your own server, enter your key once, and give your family a clean AI interface without them needing their own accounts.
+- **Share your API key with family** — host AiSpaceX on your own server, enter your key once, and give your family a clean AI interface without them needing their own accounts.
 - **No server, no backend** — it's a static site. Your API key stays in your browser and goes directly to Venice's API. Nothing passes through a middleman.
 - **Transparent** — every API call is visible in the source. No telemetry, no analytics, no tracking.
 - **Barebones on purpose** — ships with useful features like visual workflows, but keeps things minimal so you can build on top without fighting existing complexity.

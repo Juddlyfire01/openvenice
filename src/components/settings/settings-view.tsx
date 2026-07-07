@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { cn } from '../../lib/utils'
-import { useSettingsStore } from '../../stores/settings-store'
+import { useSettingsStore, type SettingsCategory } from '../../stores/settings-store'
 import { ProfileSection } from './profile-section'
 import { DisplaySection } from './display-section'
 import { DataPrivacySection } from './data-privacy-section'
 
-type Category = 'profile' | 'display' | 'data'
+type Category = SettingsCategory
 
 const CATEGORIES: Array<{ id: Category; label: string; desc: string }> = [
   { id: 'profile', label: 'Profile', desc: 'Your display identity' },
@@ -14,7 +14,15 @@ const CATEGORIES: Array<{ id: Category; label: string; desc: string }> = [
 ]
 
 export function SettingsView() {
+  const settingsFocus = useSettingsStore((s) => s.settingsFocus)
   const [cat, setCat] = useState<Category>('display')
+
+  useEffect(() => {
+    if (!settingsFocus) return
+    setCat(settingsFocus)
+    useSettingsStore.setState({ settingsFocus: null })
+  }, [settingsFocus])
+
   const closeSettings = useSettingsStore((s) => s.closeSettings)
 
   return (

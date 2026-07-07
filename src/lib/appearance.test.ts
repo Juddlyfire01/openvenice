@@ -8,11 +8,11 @@ describe('appearance', () => {
     expect(scaleToFactor(90)).toBe(0.9)
   })
 
-  it('faviconHrefForTheme maps themes to coat-of-arms variants', () => {
-    expect(faviconHrefForTheme('light')).toBe('/favicon-light.svg?v=5')
-    expect(faviconHrefForTheme('venice')).toBe('/favicon-venice.svg?v=5')
-    expect(faviconHrefForTheme('dark')).toBe('/favicon-dark.svg?v=5')
-    expect(faviconHrefForTheme('grey')).toBe('/favicon-dark.svg?v=5')
+  it('faviconHrefForTheme maps themes to logo variants', () => {
+    expect(faviconHrefForTheme('light')).toBe('/logo-dark.svg?v=10')
+    expect(faviconHrefForTheme('venice')).toBe('/logo-dark.svg?v=10')
+    expect(faviconHrefForTheme('dark')).toBe('/logo-dark.svg?v=10')
+    expect(faviconHrefForTheme('grey')).toBe('/logo-dark.svg?v=10')
   })
 
   it('applyAppearanceToHtml maps legacy zoom to ui-scale', () => {
