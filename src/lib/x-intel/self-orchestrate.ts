@@ -10,7 +10,7 @@
 import { gatherSelfProfile, gatherSelfPosts, gatherSelfBookmarks, gatherSelfLikes } from './self-gather'
 import { getSelfSession, selfLogout, switchActiveAccount } from './self-client'
 import { deriveEdges } from './normalize'
-import { computeAnalytics, computeDelta } from './analytics'
+import { computeAnalytics, computeDelta, postDateRange } from './analytics'
 import { partitionPosts } from './activity'
 import { synthesizeReport } from './synthesize'
 import { mergePosts, newReportId, useXIntelStore } from '../../stores/x-intel-store'
