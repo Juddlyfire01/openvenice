@@ -88,6 +88,6 @@ export const PALETTES: Record<string, Palette> = {
   },
 }
 
-export const DEFAULT_THEME = 'venice' as const
+export const DEFAULT_THEME = 'dark' as const
 export const THEME_ORDER = ['venice', 'dark', 'grey', 'light'] as const
 export type ThemeKey = (typeof THEME_ORDER)[number]

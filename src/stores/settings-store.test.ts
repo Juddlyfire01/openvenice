@@ -5,7 +5,7 @@ describe('settings-store', () => {
   beforeEach(() => {
     useSettingsStore.setState({
       activeTab: 'intel',
-      theme: 'venice',
+      theme: 'dark',
       scale: 100,
       fontScale: 'md',
       reduceMotion: false,
