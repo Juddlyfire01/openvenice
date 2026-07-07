@@ -38,12 +38,16 @@ interface SettingsState {
   closeSettings: () => void
 }
 
-const NON_SETTINGS_DEFAULT: Tab = 'chat'
+const NON_SETTINGS_DEFAULT: Tab = 'intel'
+
+function remapDeprecatedTab(tab: Tab | undefined): Tab {
+  return tab === 'chat' ? 'intel' : (tab ?? NON_SETTINGS_DEFAULT)
+}
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      activeTab: 'chat',
+      activeTab: NON_SETTINGS_DEFAULT,
       setActiveTab: (tab) => set({ activeTab: tab }),
       sidebarOpen: true,
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -78,7 +82,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'venice-settings',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => createSafeStorage()),
       migrate: (persisted) => {
         const s = (persisted ?? {}) as Partial<SettingsState> & { zoom?: Scale }
@@ -91,7 +95,8 @@ export const useSettingsStore = create<SettingsState>()(
           reduceMotion: s.reduceMotion ?? false,
           density: s.density ?? 'comfortable',
           profileName: s.profileName ?? '',
-          lastNonSettingsTab: s.lastNonSettingsTab ?? NON_SETTINGS_DEFAULT,
+          activeTab: remapDeprecatedTab(s.activeTab),
+          lastNonSettingsTab: remapDeprecatedTab(s.lastNonSettingsTab),
         }
       },
     },

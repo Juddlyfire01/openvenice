@@ -4,14 +4,14 @@ import { useSettingsStore } from './settings-store'
 describe('settings-store', () => {
   beforeEach(() => {
     useSettingsStore.setState({
-      activeTab: 'chat',
+      activeTab: 'intel',
       theme: 'venice',
       scale: 100,
       fontScale: 'md',
       reduceMotion: false,
       density: 'comfortable',
       profileName: '',
-      lastNonSettingsTab: 'chat',
+      lastNonSettingsTab: 'intel',
     })
   })
 
@@ -43,15 +43,20 @@ describe('settings-store', () => {
   })
 
   it('closeSettings restores the previous tab', () => {
-    useSettingsStore.getState().setActiveTab('chat')
+    useSettingsStore.getState().setActiveTab('intel')
     useSettingsStore.getState().openSettings()
     useSettingsStore.getState().closeSettings()
-    expect(useSettingsStore.getState().activeTab).toBe('chat')
+    expect(useSettingsStore.getState().activeTab).toBe('intel')
   })
 
   it('toggleReduceMotion flips the flag', () => {
     expect(useSettingsStore.getState().reduceMotion).toBe(false)
     useSettingsStore.getState().toggleReduceMotion()
     expect(useSettingsStore.getState().reduceMotion).toBe(true)
+  })
+
+  it('defaults to intel, not deprecated chat', () => {
+    expect(useSettingsStore.getState().activeTab).toBe('intel')
+    expect(useSettingsStore.getState().lastNonSettingsTab).toBe('intel')
   })
 })
