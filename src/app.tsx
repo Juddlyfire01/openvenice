@@ -44,6 +44,11 @@ function SignalView() {
   return <Suspense fallback={<ViewLoadingFallback label="Loading signal…" />}><LazySignalView /></Suspense>
 }
 
+const LazyNewsView = lazy(() => import('./components/news/news-view').then((m) => ({ default: m.NewsView })))
+function NewsView() {
+  return <Suspense fallback={<ViewLoadingFallback label="Loading news…" />}><LazyNewsView /></Suspense>
+}
+
 const views = {
   chat: ChatView,
   image: ImagePage,
@@ -56,6 +61,7 @@ const views = {
   intel: IntelView,
   signal: SignalView,
   stats: StatsView,
+  news: NewsView,
   settings: SettingsView,
 } as const
 

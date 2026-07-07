@@ -151,7 +151,12 @@ Signal/Stats. Feed list container reuses the BuzzFeed card treatment
 
 ## Testing
 
-Repo has no automated test suite; verification is manual:
+Automated (vitest, following the existing `src/**/*.test.ts` convention):
+RSS/Atom normalization logic (parse fixtures → `NewsItem[]`), summary HTML
+stripping/truncation, image extraction, dedupe/sort, and news-store behavior
+(enable/disable feeds, bookmarks toggle, persistence shape).
+
+Manual verification:
 
 1. Run `vercel dev` + Vite with `VITE_API_TARGET`; confirm every registry feed
    parses (or gets culled from the registry).
